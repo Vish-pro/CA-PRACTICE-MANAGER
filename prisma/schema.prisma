@@ -25,6 +25,9 @@ model User {
   feedbacks     TaskFeedback[]
   clientProfile ClientProfile? // If role is CLIENT
   givenRatings  ClientRating[] // Staff giving ratings to clients
+  assignedLeads Lead[]         @relation("AssignedLeads")
+  todos         TodoItem[]     @relation("UserTodos")
+  sentMessages  ChatMessage[]  @relation("SentMessages")
 }
 
 model ClientProfile {
@@ -42,6 +45,14 @@ model ClientProfile {
   invoices    Invoice[]
   documents   Document[]
   ratings     ClientRating[]
+
+  groupId     String?
+  group       ClientGroup? @relation(fields: [groupId], references: [id])
+  rateCards   ClientRateCard[]
+  slas        SLA[]
+  dscs        DSCRegister[]
+  licenses    LicenseRegister[]
+  passwords   PasswordVault[]
 }
 
 model TaskTemplate {
@@ -129,6 +140,8 @@ model Service {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   invoiceLineItems InvoiceLineItem[]
+  rateCards   ClientRateCard[]
+  slas        SLA[]
 }
 
 model Invoice {
@@ -144,6 +157,9 @@ model Invoice {
 
   lineItems   InvoiceLineItem[]
   payments    Payment[]
+
+  billingEntityId String?
+  billingEntity   BillingEntity? @relation(fields: [billingEntityId], references: [id])
 }
 
 model InvoiceLineItem {
@@ -178,6 +194,8 @@ model Document {
   fileUrl     String
   fileType    String
   createdAt   DateTime @default(now())
+
+  movements   DocumentMovement[]
 }
 
 model Attendance {
@@ -235,4 +253,111 @@ model EmailThread {
   body        String
   receivedAt  DateTime @default(now())
   isRead      Boolean  @default(false)
+}
+model Lead {
+  id          String   @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  source      String?
+  status      String   @default("NEW") // NEW, CONTACTED, QUALIFIED, CONVERTED, LOST
+  notes       String?
+  assignedToId String?
+  assignedTo  User?    @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ClientGroup {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  clients     ClientProfile[]
+  createdAt   DateTime @default(now())
+}
+
+model ClientRateCard {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  customPrice Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SLA {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  promisedDays Int
+  createdAt   DateTime @default(now())
+}
+
+model DSCRegister {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  holderName  String
+  expiryDate  DateTime
+  location    String?
+  createdAt   DateTime @default(now())
+}
+
+model LicenseRegister {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  licenseName String
+  licenseNo   String
+  expiryDate  DateTime
+  createdAt   DateTime @default(now())
+}
+
+model PasswordVault {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  portalName  String
+  username    String
+  encryptedPwd String
+  createdAt   DateTime @default(now())
+}
+
+model DocumentMovement {
+  id          String   @id @default(uuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id])
+  fromUserId  String
+  toUserId    String?
+  status      String   @default("IN_TRANSIT")
+  movedAt     DateTime @default(now())
+}
+
+model TodoItem {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("UserTodos", fields: [userId], references: [id])
+  task        String
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model BillingEntity {
+  id          String   @id @default(uuid())
+  name        String
+  gstin       String?
+  address     String?
+  invoices    Invoice[]
+}
+
+model ChatMessage {
+  id          String   @id @default(uuid())
+  senderId    String
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  content     String
+  timestamp   DateTime @default(now())
 }

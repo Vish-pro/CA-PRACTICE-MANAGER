@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, CheckSquare, FileText, Mail, PieChart, UserCircle, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, CheckSquare, FileText, Mail, PieChart, UserCircle, LogOut, Target, MessageSquare, ClipboardList, Briefcase, Key } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
 
 const sidebarLinks = [
-  { name: "HR & Team", href: "/hr", icon: Users },
+  { name: "Action Center", href: "/action-center", icon: Target },
   { name: "Tasks & Workflow", href: "/tasks", icon: CheckSquare },
+  { name: "Leads", href: "/leads", icon: Briefcase },
   { name: "Client OS", href: "/clients", icon: UserCircle },
+  { name: "Registers", href: "/registers/dsc", icon: Key },
   { name: "Emails", href: "/emails", icon: Mail },
+  { name: "Chat", href: "/chat", icon: MessageSquare },
+  { name: "My To-Do", href: "/todo", icon: ClipboardList },
   { name: "Billing", href: "/billing", icon: FileText },
+  { name: "HR & Team", href: "/hr", icon: Users },
   { name: "Reports", href: "/reports", icon: PieChart },
 ];
 
