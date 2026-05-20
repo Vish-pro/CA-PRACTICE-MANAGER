@@ -9,7 +9,7 @@ export default withAuth(
 
     if (isAuthPage) {
       if (isAuth) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+        return NextResponse.redirect(new URL("/tasks/tracker", req.url));
       }
       return null;
     }
@@ -32,5 +32,18 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/clients/:path*", "/tasks/:path*", "/billing/:path*", "/hr/:path*", "/login"],
+  matcher: [
+    "/action-center/:path*",
+    "/billing/:path*",
+    "/chat/:path*",
+    "/clients/:path*",
+    "/emails/:path*",
+    "/hr/:path*",
+    "/leads/:path*",
+    "/registers/:path*",
+    "/reports/:path*",
+    "/tasks/:path*",
+    "/todo/:path*",
+    "/login"
+  ],
 };
