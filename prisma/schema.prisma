@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  role          String    @default("JUNIOR_STAFF") // ADMIN, JUNIOR_STAFF, SENIOR_STAFF, CLIENT, BILLING
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  assignedTasks Task[]    @relation("AssignedTo")
+  createdTasks  Task[]    @relation("CreatedBy")
+  attendances   Attendance[]
+  leaves        Leave[]
+  reimbursements Reimbursement[]
+  feedbacks     TaskFeedback[]
+  clientProfile ClientProfile? // If role is CLIENT
+  givenRatings  ClientRating[] // Staff giving ratings to clients
+}
+
+model ClientProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  companyName String
+  gstNumber   String?
+  panNumber   String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tasks       Task[]
+  invoices    Invoice[]
+  documents   Document[]
+  ratings     ClientRating[]
+}
+
+model TaskTemplate {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  category    String   // GST, TDS, ITR
+  isRecurring Boolean  @default(false)
+  recurringCron String? // E.g., "0 0 1 * *" for monthly
+  sops        SOPChecklist[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tasks       Task[]
+}
+
+model Task {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  status        String   @default("PENDING") // PENDING, IN_PROGRESS, REVIEW, OVERDUE, COMPLETED
+  priority      String   @default("MEDIUM")
+  dueDate       DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assignedToId  String?
+  assignedTo    User?    @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdById   String
+  createdBy     User     @relation("CreatedBy", fields: [createdById], references: [id])
+  clientId      String?
+  client        ClientProfile? @relation(fields: [clientId], references: [id])
+  templateId    String?
+  template      TaskTemplate? @relation(fields: [templateId], references: [id])
+
+  subtasks      Subtask[]
+  feedbacks     TaskFeedback[]
+  invoiceLineItems InvoiceLineItem[]
+}
+
+model Subtask {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title       String
+  isCompleted Boolean  @default(false)
+}
+
+model SOPChecklist {
+  id            String   @id @default(uuid())
+  templateId    String
+  template      TaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  orderIndex    Int
+}
+
+model TaskFeedback {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String   // Employee receiving feedback
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating      Int      // 1-5
+  comment     String?
+  createdAt   DateTime @default(now())
+}
+
+model ClientRating {
+  id              String   @id @default(uuid())
+  clientId        String
+  client          ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  staffId         String
+  staff           User     @relation(fields: [staffId], references: [id])
+  rating          Int      // 1-5
+  comment         String?
+  createdAt       DateTime @default(now())
+}
+
+model Service {
+  id          String   @id @default(uuid())
+  name        String   // e.g., GST Filing, ITR, Audit
+  description String?
+  basePrice   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  invoiceLineItems InvoiceLineItem[]
+}
+
+model Invoice {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id])
+  status      String   @default("PROFORMA") // PROFORMA, UNPAID, PARTIAL, PAID
+  totalAmount Float    @default(0)
+  issueDate   DateTime @default(now())
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lineItems   InvoiceLineItem[]
+  payments    Payment[]
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id])
+  taskId      String?
+  task        Task?    @relation(fields: [taskId], references: [id])
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Float
+  totalPrice  Float
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount      Float
+  paymentDate DateTime @default(now())
+  method      String   // BANK_TRANSFER, CASH, ONLINE
+  reference   String?
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id])
+  fileName    String
+  fileUrl     String
+  fileType    String
+  createdAt   DateTime @default(now())
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkInTime DateTime @default(now())
+  checkOutTime DateTime?
+  checkInLat  Float?
+  checkInLng  Float?
+  checkOutLat Float?
+  checkOutLng Float?
+  date        DateTime @default(now())
+}
+
+model Leave {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate   DateTime
+  endDate     DateTime
+  reason      String
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  type        String   // SICK, CASUAL, EARNED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Reimbursement {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  description String
+  receiptUrl  String?
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EmailTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  subject     String
+  body        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EmailThread {
+  id          String   @id @default(uuid())
+  subject     String
+  sender      String
+  recipient   String
+  body        String
+  receivedAt  DateTime @default(now())
+  isRead      Boolean  @default(false)
+}
