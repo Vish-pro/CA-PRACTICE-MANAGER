@@ -28,7 +28,7 @@ export async function GET(request: Request) {
       orderBy: { name: 'asc' },
       include: {
         _count: {
-          select: { sopSteps: true, tasks: true }
+          select: { sopSteps: true, tasks: true, rateCards: true }
         }
       }
     });
@@ -37,6 +37,7 @@ export async function GET(request: Request) {
       ...s,
       hasSOP: s._count.sopSteps > 0,
       hasSubtasks: s._count.tasks > 0,
+      assignedClients: s._count.rateCards,
     }));
 
     return NextResponse.json({ data, total: data.length });
