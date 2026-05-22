@@ -8,155 +8,197 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  name          String?
-  passwordHash  String
-  role          String    @default("JUNIOR_STAFF") // ADMIN, JUNIOR_STAFF, SENIOR_STAFF, CLIENT, BILLING
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  role         String   @default("JUNIOR_STAFF") // ADMIN, JUNIOR_STAFF, SENIOR_STAFF, CLIENT, BILLING
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relationships
-  assignedTasks Task[]    @relation("AssignedTo")
-  createdTasks  Task[]    @relation("CreatedBy")
-  attendances   Attendance[]
-  leaves        Leave[]
+  assignedTasks  Task[]          @relation("AssignedTo")
+  createdTasks   Task[]          @relation("CreatedBy")
+  reviewedTasks  Task[]          @relation("ReviewedTasks")
+  attendances    Attendance[]
+  leaves         Leave[]
   reimbursements Reimbursement[]
-  feedbacks     TaskFeedback[]
-  clientProfile ClientProfile? // If role is CLIENT
-  givenRatings  ClientRating[] // Staff giving ratings to clients
-  assignedLeads Lead[]         @relation("AssignedLeads")
-  todos         TodoItem[]     @relation("UserTodos")
-  sentMessages  ChatMessage[]  @relation("SentMessages")
+  feedbacks      TaskFeedback[]
+  clientProfile  ClientProfile? // If role is CLIENT
+  auditedClients ClientProfile[] @relation("ClientAuditor")
+  givenRatings   ClientRating[] // Staff giving ratings to clients
+  assignedLeads  Lead[]          @relation("AssignedLeads")
+  todos          TodoItem[]      @relation("UserTodos")
+  sentMessages   ChatMessage[]   @relation("SentMessages")
 }
 
 model ClientProfile {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id])
-  companyName String
-  gstNumber   String?
-  panNumber   String?
-  address     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id])
+  companyName    String
+  clientCode     String?   @unique // auto-generated: PLC00001 / PVT00001 / PAR00001 etc.
+  legalName      String?
+  contactName    String?
+  contactEmail   String?
+  mobile         String?
+  businessEntity String? // Public Limited | Private Limited | Partnership | LLP | Proprietorship | Trust | HUF
+  auditorId      String?
+  auditor        User?     @relation("ClientAuditor", fields: [auditorId], references: [id])
+  labels         String? // comma-separated label names
+  isActive       Boolean   @default(true)
+  lastActivityAt DateTime?
+  gstNumber      String?
+  panNumber      String?
+  address        String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  tasks       Task[]
-  invoices    Invoice[]
-  documents   Document[]
-  ratings     ClientRating[]
+  tasks     Task[]
+  invoices  Invoice[]
+  documents Document[]
+  ratings   ClientRating[]
 
-  groupId     String?
-  group       ClientGroup? @relation(fields: [groupId], references: [id])
-  rateCards   ClientRateCard[]
-  slas        SLA[]
-  dscs        DSCRegister[]
-  licenses    LicenseRegister[]
-  passwords   PasswordVault[]
+  groupId   String?
+  group     ClientGroup?      @relation(fields: [groupId], references: [id])
+  rateCards ClientRateCard[]
+  slas      SLA[]
+  dscs      DSCRegister[]
+  licenses  LicenseRegister[]
+  passwords PasswordVault[]
 }
 
 model TaskTemplate {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  category    String   // GST, TDS, ITR
-  isRecurring Boolean  @default(false)
+  id            String         @id @default(uuid())
+  title         String
+  description   String?
+  category      String // GST, TDS, ITR
+  isRecurring   Boolean        @default(false)
   recurringCron String? // E.g., "0 0 1 * *" for monthly
-  sops        SOPChecklist[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  tasks       Task[]
+  sops          SOPChecklist[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  tasks         Task[]
 }
 
 model Task {
-  id            String   @id @default(uuid())
-  title         String
-  description   String?
-  status        String   @default("PENDING") // PENDING, IN_PROGRESS, REVIEW, OVERDUE, COMPLETED
-  priority      String   @default("MEDIUM")
-  dueDate       DateTime?
-  completedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String    @id @default(uuid())
+  taskNumber  Int       @unique // used to generate TSK00001
+  title       String
+  description String?
+  status      String    @default("PENDING") // PENDING, IN_PROGRESS, REVIEW, OVERDUE, COMPLETED
+  priority    String    @default("MEDIUM")
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  assignedToId  String?
-  assignedTo    User?    @relation("AssignedTo", fields: [assignedToId], references: [id])
-  createdById   String
-  createdBy     User     @relation("CreatedBy", fields: [createdById], references: [id])
-  clientId      String?
-  client        ClientProfile? @relation(fields: [clientId], references: [id])
-  templateId    String?
-  template      TaskTemplate? @relation(fields: [templateId], references: [id])
+  assignedToId String?
+  assignedTo   User?          @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdById  String
+  createdBy    User           @relation("CreatedBy", fields: [createdById], references: [id])
+  clientId     String?
+  client       ClientProfile? @relation(fields: [clientId], references: [id])
+  templateId   String?
+  template     TaskTemplate?  @relation(fields: [templateId], references: [id])
+  serviceId    String?
+  service      Service?       @relation("ServiceTasks", fields: [serviceId], references: [id])
+  category     String? // derived from service.category, stored for fast filtering
+  reviewerId   String?
+  reviewer     User?          @relation("ReviewedTasks", fields: [reviewerId], references: [id])
+  isRecurring  Boolean        @default(false)
+  frequency    String? // DAILY | WEEKLY | FORTNIGHTLY | MONTHLY | QUARTERLY | ANNUAL
+  recurringEnd DateTime? // when recurring stops
+  parentTaskId String? // for recurring child tasks, points to parent
 
-  subtasks      Subtask[]
-  feedbacks     TaskFeedback[]
+  subtasks         Subtask[]
+  feedbacks        TaskFeedback[]
   invoiceLineItems InvoiceLineItem[]
 }
 
 model Subtask {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   taskId      String
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task        Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   title       String
-  isCompleted Boolean  @default(false)
+  isCompleted Boolean @default(false)
 }
 
 model SOPChecklist {
-  id            String   @id @default(uuid())
-  templateId    String
-  template      TaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  title         String
-  description   String?
-  orderIndex    Int
+  id          String       @id @default(uuid())
+  templateId  String
+  template    TaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  orderIndex  Int
 }
 
 model TaskFeedback {
-  id          String   @id @default(uuid())
-  taskId      String
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  userId      String   // Employee receiving feedback
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating      Int      // 1-5
-  comment     String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String // Employee receiving feedback
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
 }
 
 model ClientRating {
-  id              String   @id @default(uuid())
-  clientId        String
-  client          ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  staffId         String
-  staff           User     @relation(fields: [staffId], references: [id])
-  rating          Int      // 1-5
-  comment         String?
-  createdAt       DateTime @default(now())
+  id        String        @id @default(uuid())
+  clientId  String
+  client    ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  staffId   String
+  staff     User          @relation(fields: [staffId], references: [id])
+  rating    Int // 1-5
+  comment   String?
+  createdAt DateTime      @default(now())
 }
 
 model Service {
-  id          String   @id @default(uuid())
-  name        String   // e.g., GST Filing, ITR, Audit
-  description String?
-  basePrice   Float    @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  category        String // GST | MCA | TDS/TCS | Income Tax | PF | ESI | Professional Tax | Advance Tax | Manual
+  frequency       String   @default("ONE_TIME") // ONE_TIME | DAILY | WEEKLY | FORTNIGHTLY | MONTHLY | QUARTERLY | ANNUAL
+  professionalFee Float    @default(0)
+  hasSOP          Boolean  @default(false)
+  hasSubtasks     Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  isLocked        Boolean  @default(false) // shows lock icon — system default services cannot be deleted
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
   invoiceLineItems InvoiceLineItem[]
-  rateCards   ClientRateCard[]
-  slas        SLA[]
+  rateCards        ClientRateCard[]
+  slas             SLA[]
+  tasks            Task[]            @relation("ServiceTasks")
+  sopSteps         ServiceSOP[]
+}
+
+model ServiceSOP {
+  id          String   @id @default(uuid())
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  orderIndex  Int
+  createdAt   DateTime @default(now())
 }
 
 model Invoice {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   clientId    String
   client      ClientProfile @relation(fields: [clientId], references: [id])
-  status      String   @default("PROFORMA") // PROFORMA, UNPAID, PARTIAL, PAID
-  totalAmount Float    @default(0)
-  issueDate   DateTime @default(now())
+  status      String        @default("PROFORMA") // PROFORMA, UNPAID, PARTIAL, PAID
+  totalAmount Float         @default(0)
+  issueDate   DateTime      @default(now())
   dueDate     DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  lineItems   InvoiceLineItem[]
-  payments    Payment[]
+  lineItems InvoiceLineItem[]
+  payments  Payment[]
 
   billingEntityId String?
   billingEntity   BillingEntity? @relation(fields: [billingEntityId], references: [id])
@@ -182,46 +224,46 @@ model Payment {
   invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   amount      Float
   paymentDate DateTime @default(now())
-  method      String   // BANK_TRANSFER, CASH, ONLINE
+  method      String // BANK_TRANSFER, CASH, ONLINE
   reference   String?
 }
 
 model Document {
-  id          String   @id @default(uuid())
-  clientId    String
-  client      ClientProfile @relation(fields: [clientId], references: [id])
-  fileName    String
-  fileUrl     String
-  fileType    String
-  createdAt   DateTime @default(now())
+  id        String        @id @default(uuid())
+  clientId  String
+  client    ClientProfile @relation(fields: [clientId], references: [id])
+  fileName  String
+  fileUrl   String
+  fileType  String
+  createdAt DateTime      @default(now())
 
-  movements   DocumentMovement[]
+  movements DocumentMovement[]
 }
 
 model Attendance {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  checkInTime DateTime @default(now())
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkInTime  DateTime  @default(now())
   checkOutTime DateTime?
-  checkInLat  Float?
-  checkInLng  Float?
-  checkOutLat Float?
-  checkOutLng Float?
-  date        DateTime @default(now())
+  checkInLat   Float?
+  checkInLng   Float?
+  checkOutLat  Float?
+  checkOutLng  Float?
+  date         DateTime  @default(now())
 }
 
 model Leave {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  startDate   DateTime
-  endDate     DateTime
-  reason      String
-  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  type        String   // SICK, CASUAL, EARNED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  endDate   DateTime
+  reason    String
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  type      String // SICK, CASUAL, EARNED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Reimbursement {
@@ -237,104 +279,113 @@ model Reimbursement {
 }
 
 model EmailTemplate {
-  id          String   @id @default(uuid())
-  name        String
-  subject     String
-  body        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  name      String
+  subject   String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model EmailThread {
-  id          String   @id @default(uuid())
-  subject     String
-  sender      String
-  recipient   String
-  body        String
-  receivedAt  DateTime @default(now())
-  isRead      Boolean  @default(false)
+  id         String   @id @default(uuid())
+  subject    String
+  sender     String
+  recipient  String
+  body       String
+  receivedAt DateTime @default(now())
+  isRead     Boolean  @default(false)
 }
+
 model Lead {
-  id          String   @id @default(uuid())
-  name        String
-  email       String?
-  phone       String?
-  source      String?
-  status      String   @default("NEW") // NEW, CONTACTED, QUALIFIED, CONVERTED, LOST
-  notes       String?
-  assignedToId String?
-  assignedTo  User?    @relation("AssignedLeads", fields: [assignedToId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default(uuid())
+  leadNumber          Int      @unique // for display reference
+  businessName        String
+  legalName           String?
+  businessEntity      String? // Public Limited | Private Limited | Partnership | LLP | Proprietorship | Trust | HUF
+  contactName         String?
+  contactEmail        String?
+  contactPhone        String?
+  source              String? // Website | Referral | Walk-in | Social Media | Cold Call | Other
+  leadScore           Int      @default(0) // 0–100
+  stage               String   @default("NEW") // NEW | CONTACTED | QUALIFIED | CONVERTED | LOST
+  dealValue           Float?
+  dealType            String? // One-time | Recurring | Retainer
+  notes               String?
+  assignedToId        String?
+  assignedTo          User?    @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  convertedToClientId String? // set when converted
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model ClientGroup {
-  id          String   @id @default(uuid())
+  id          String          @id @default(uuid())
   name        String
   description String?
   clients     ClientProfile[]
-  createdAt   DateTime @default(now())
+  createdAt   DateTime        @default(now())
 }
 
 model ClientRateCard {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   clientId    String
   client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
   serviceId   String
-  service     Service  @relation(fields: [serviceId], references: [id])
+  service     Service       @relation(fields: [serviceId], references: [id])
   customPrice Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 }
 
 model SLA {
-  id          String   @id @default(uuid())
-  clientId    String
-  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  serviceId   String
-  service     Service  @relation(fields: [serviceId], references: [id])
+  id           String        @id @default(uuid())
+  clientId     String
+  client       ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceId    String
+  service      Service       @relation(fields: [serviceId], references: [id])
   promisedDays Int
-  createdAt   DateTime @default(now())
+  createdAt    DateTime      @default(now())
 }
 
 model DSCRegister {
-  id          String   @id @default(uuid())
-  clientId    String
-  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  holderName  String
-  expiryDate  DateTime
-  location    String?
-  createdAt   DateTime @default(now())
+  id         String        @id @default(uuid())
+  clientId   String
+  client     ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  holderName String
+  expiryDate DateTime
+  location   String?
+  createdAt  DateTime      @default(now())
 }
 
 model LicenseRegister {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   clientId    String
   client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
   licenseName String
   licenseNo   String
   expiryDate  DateTime
-  createdAt   DateTime @default(now())
+  createdAt   DateTime      @default(now())
 }
 
 model PasswordVault {
-  id          String   @id @default(uuid())
-  clientId    String
-  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  portalName  String
-  username    String
+  id           String        @id @default(uuid())
+  clientId     String
+  client       ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  portalName   String
+  username     String
   encryptedPwd String
-  createdAt   DateTime @default(now())
+  createdAt    DateTime      @default(now())
 }
 
 model DocumentMovement {
-  id          String   @id @default(uuid())
-  documentId  String
-  document    Document @relation(fields: [documentId], references: [id])
-  fromUserId  String
-  toUserId    String?
-  status      String   @default("IN_TRANSIT")
-  movedAt     DateTime @default(now())
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  fromUserId String
+  toUserId   String?
+  status     String   @default("IN_TRANSIT")
+  movedAt    DateTime @default(now())
 }
 
 model TodoItem {
@@ -347,17 +398,22 @@ model TodoItem {
 }
 
 model BillingEntity {
-  id          String   @id @default(uuid())
-  name        String
-  gstin       String?
-  address     String?
-  invoices    Invoice[]
+  id       String    @id @default(uuid())
+  name     String
+  gstin    String?
+  address  String?
+  invoices Invoice[]
 }
 
 model ChatMessage {
-  id          String   @id @default(uuid())
-  senderId    String
-  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
-  content     String
-  timestamp   DateTime @default(now())
+  id        String   @id @default(uuid())
+  senderId  String
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
+  content   String
+  timestamp DateTime @default(now())
+}
+
+model Counter {
+  id    String @id // "task" | "client_PLC" | "client_PVT" | "client_PAR" etc.
+  value Int    @default(0)
 }

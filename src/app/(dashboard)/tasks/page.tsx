@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function TasksRootRedirect() {
-  redirect("/tasks/tracker");
+export default function TasksRedirectPage() {
+  redirect("/tasks/list");
 }

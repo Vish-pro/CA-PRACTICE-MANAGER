@@ -2,26 +2,29 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, CheckSquare, FileText, Mail, PieChart, UserCircle, LogOut, Target, MessageSquare, ClipboardList, Briefcase, Key } from "lucide-react";
+import { LayoutDashboard, Users, CheckSquare, FileText, Mail, PieChart, UserCircle, LogOut, Target, MessageSquare, ClipboardList, Briefcase, Key, UserPlus, Shield, FileCheck, Lock, Inbox, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
+import { Avatar } from "@/components/ui/avatar";
 
 const sidebarLinks = [
-  { name: "Action Center", href: "/action-center", icon: Target },
-  { name: "Tasks & Workflow", href: "/tasks", icon: CheckSquare },
-  { name: "Leads", href: "/leads", icon: Briefcase },
-  { name: "Client OS", href: "/clients", icon: UserCircle },
-  { name: "Registers", href: "/registers/dsc", icon: Key },
-  { name: "Emails", href: "/emails", icon: Mail },
-  { name: "Chat", href: "/chat", icon: MessageSquare },
-  { name: "My To-Do", href: "/todo", icon: ClipboardList },
-  { name: "Billing", href: "/billing", icon: FileText },
-  { name: "HR & Team", href: "/hr", icon: Users },
+  { name: "Home", href: "/action-center", icon: LayoutDashboard },
+  { name: "Leads", href: "/leads", icon: UserPlus },
+  { name: "Clients", href: "/clients", icon: Users },
+  { name: "Services", href: "/services", icon: Briefcase },
+  { name: "Tasks", href: "/tasks", icon: CheckSquare },
+  { name: "Invoice", href: "/billing/invoices", icon: FileText },
+  { name: "DSC", href: "/registers/dsc", icon: Shield },
+  { name: "Licenses", href: "/registers/licenses", icon: FileCheck },
+  { name: "Passwords", href: "/registers/passwords", icon: Lock },
+  { name: "Doc Inbox", href: "/documents", icon: Inbox },
+  { name: "HR & Team", href: "/hr", icon: UserCog },
   { name: "Reports", href: "/reports", icon: PieChart },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
@@ -72,12 +75,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <header className="h-16 border-b flex items-center px-6 justify-end bg-card">
           <div className="flex items-center space-x-3">
             <div className="text-right">
-              <div className="text-sm font-semibold">User Dashboard</div>
-              <div className="text-xs text-muted-foreground">Admin Partner</div>
+              <div className="text-sm font-semibold">{session?.user?.name || "User"}</div>
+              <div className="text-xs text-muted-foreground capitalize">{session?.user?.role?.toLowerCase() || "Role"}</div>
             </div>
-            <div className="h-9 w-9 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
-              A
-            </div>
+            <Avatar name={session?.user?.name || "User"} size="md" />
           </div>
         </header>
 
