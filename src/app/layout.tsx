@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import AuthProvider from "@/components/auth-provider";
+import { Toaster } from "react-hot-toast";
 
 export default function RootLayout({
   children,
@@ -31,6 +32,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <AuthProvider>{children}</AuthProvider>
+        <Toaster position="bottom-right" />
       </body>
     </html>
   );
