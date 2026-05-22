@@ -1,0 +1,107 @@
+--- src/app/(dashboard)/leads/page.tsx
++++ src/app/(dashboard)/leads/page.tsx
+@@ -26,7 +26,9 @@
+
+   // Filters
+   const [search, setSearch] = useState("");
+-  const [stageFilter, setStageFilter] = useState("ALL");
++  const [selectedStages, setSelectedStages] = useState<string[]>([]);
++  const [selectedSources, setSelectedSources] = useState<string[]>([]);
++  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+
+   // Slide Over state
+   const [isDetailOpen, setIsDetailOpen] = useState(false);
+@@ -39,7 +41,7 @@
+
+   useEffect(() => {
+     fetchLeads();
+-  }, [stageFilter, search]);
++  }, [selectedStages, selectedSources, search]);
+
+   useEffect(() => {
+     // Note: To fetch staff users
+@@ -50,7 +52,8 @@
+     setLoading(true);
+     try {
+       const url = new URL("/api/leads", window.location.origin);
+-      if (stageFilter !== "ALL") url.searchParams.append("stage", stageFilter);
++      if (selectedStages.length > 0) url.searchParams.append("stages", selectedStages.join(","));
++      if (selectedSources.length > 0) url.searchParams.append("sources", selectedSources.join(","));
+       if (search) url.searchParams.append("search", search);
+
+       const res = await fetch(url.toString());
+@@ -298,9 +301,69 @@
+             onChange={setSearch}
+             className="w-48 sm:w-64"
+           />
+-          <button className="flex items-center gap-2 px-3 py-2 border rounded-md hover:bg-muted text-sm font-medium transition-colors">
+-            <Filter className="w-4 h-4" /> Filters <span className="text-xs">▼</span>
+-          </button>
++
++          <div className="relative">
++            <button
++              onClick={() => setIsFiltersOpen(!isFiltersOpen)}
++              className="flex items-center gap-2 px-3 py-2 border rounded-md hover:bg-muted text-sm font-medium transition-colors bg-white"
++            >
++              <Filter className="w-4 h-4" /> Filters <span className="text-xs">▼</span>
++              {(selectedStages.length > 0 || selectedSources.length > 0) && (
++                <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
++                  {selectedStages.length + selectedSources.length}
++                </span>
++              )}
++            </button>
++
++            {isFiltersOpen && (
++              <div className="absolute right-0 mt-2 w-64 bg-white border shadow-lg rounded-md z-50 p-4">
++                <div className="mb-4">
++                  <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Stages</h4>
++                  <div className="space-y-2">
++                    {["NEW", "CONTACTED", "QUALIFIED", "CONVERTED", "LOST"].map(stage => (
++                      <label key={stage} className="flex items-center gap-2 text-sm cursor-pointer">
++                        <input
++                          type="checkbox"
++                          checked={selectedStages.includes(stage)}
++                          onChange={(e) => {
++                            if (e.target.checked) {
++                              setSelectedStages([...selectedStages, stage]);
++                            } else {
++                              setSelectedStages(selectedStages.filter(s => s !== stage));
++                            }
++                          }}
++                          className="rounded border-gray-300"
++                        />
++                        {stage.charAt(0) + stage.slice(1).toLowerCase()}
++                      </label>
++                    ))}
++                  </div>
++                </div>
++
++                <div>
++                  <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Sources</h4>
++                  <div className="space-y-2">
++                    {["Website", "Referral", "Walk-in", "Social Media", "Cold Call", "Other"].map(source => (
++                      <label key={source} className="flex items-center gap-2 text-sm cursor-pointer">
++                        <input
++                          type="checkbox"
++                          checked={selectedSources.includes(source)}
++                          onChange={(e) => {
++                            if (e.target.checked) {
++                              setSelectedSources([...selectedSources, source]);
++                            } else {
++                              setSelectedSources(selectedSources.filter(s => s !== source));
++                            }
++                          }}
++                          className="rounded border-gray-300"
++                        />
++                        {source}
++                      </label>
++                    ))}
++                  </div>
++                </div>
++              </div>
++            )}
++          </div>
++
+           <button className="p-2 border rounded-md hover:bg-muted transition-colors">
+             <AlignJustify className="w-5 h-5 text-muted-foreground" />
+           </button>
