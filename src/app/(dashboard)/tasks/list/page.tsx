@@ -50,12 +50,12 @@ export default function TasksListPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
-  const [newNote, setNewNote] = useState("");
 
   // Data for Add Task dropdowns (in real app, fetched from API)
   const [clients, setClients] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
-  const [staff, setStaff] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [isRecurring, setIsRecurring] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -66,7 +66,7 @@ export default function TasksListPage() {
     // Fetch clients and services for the Add Task form
     fetch('/api/clients').then(r => r.json()).then(d => setClients(d.data || []));
     fetch('/api/services').then(r => r.json()).then(d => setServices(d.data || []));
-    fetch('/api/staff').then(r => r.json()).then(d => setStaff(d.data || []));
+    fetch('/api/users').then(r => r.json()).then(d => setUsers(d.data || []));
   }, []);
 
   const fetchTasks = async () => {
@@ -111,27 +111,6 @@ export default function TasksListPage() {
     }
   };
 
-  const handleAddNote = async () => {
-    if (!selectedTask || !newNote.trim()) return;
-
-    const timestamp = new Date().toLocaleString();
-    const userName = session?.user?.name || "User";
-    const noteEntry = `[${timestamp}] ${userName}:\n${newNote.trim()}`;
-    const updatedDescription = selectedTask.description
-      ? `${selectedTask.description}\n\n${noteEntry}`
-      : noteEntry;
-
-    await fetch(`/api/tasks/${selectedTask.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description: updatedDescription }),
-    });
-
-    setNewNote("");
-    handleRowClick(selectedTask); // refresh drawer
-    fetchTasks();
-  };
-
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
@@ -146,9 +125,9 @@ export default function TasksListPage() {
       reviewerId: formData.get("reviewerId") || null,
       priority: formData.get("priority"),
       dueDate: formData.get("dueDate"),
-      isRecurring: formData.get("isRecurring") === "on",
-      frequency: formData.get("frequency"),
-      recurringEnd: formData.get("recurringEnd") || null,
+      isRecurring: isRecurring,
+      frequency: isRecurring ? formData.get("frequency") : null,
+      recurringEnd: isRecurring ? (formData.get("recurringEnd") || null) : null,
       description: formData.get("description"),
     };
 
@@ -159,24 +138,7 @@ export default function TasksListPage() {
     });
 
     setIsAddOpen(false);
-    fetchTasks();
-    fetchStats();
-  };
-
-  const handleUpdateField = async (field: string, value: any) => {
-    if (!selectedTask) return;
-
-    // Optimistically update the UI
-    setSelectedTask((prev: any) => ({ ...prev, [field]: value }));
-
-    await fetch(`/api/tasks/${selectedTask.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value }),
-    });
-
-    // Refresh fully from server
-    handleRowClick(selectedTask);
+    setIsRecurring(false); // Reset recurring state
     fetchTasks();
     fetchStats();
   };
@@ -355,7 +317,10 @@ export default function TasksListPage() {
       {/* Spec says: Add Task — Modal. Let's use SlideOver for consistency with detail, but can be a full modal. The slide-over is easier to scroll. Using SlideOver for forms is common. Let's stick to SlideOver as it provides more space. Wait, I will use SlideOver. */}
       <SlideOver
         open={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
+        onClose={() => {
+          setIsAddOpen(false);
+          setIsRecurring(false);
+        }}
         title="Create Task"
       >
         <form id="task-form" onSubmit={handleAddTask} className="space-y-4">
@@ -387,14 +352,14 @@ export default function TasksListPage() {
             <label className="block text-sm font-medium mb-1">Assignee</label>
             <select name="assignedToId" className="w-full p-2 border rounded-md text-sm">
               <option value="">Select Assignee...</option>
-              {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Reviewer</label>
             <select name="reviewerId" className="w-full p-2 border rounded-md text-sm">
               <option value="">Select Reviewer...</option>
-              {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
             </select>
           </div>
           <div>
@@ -410,9 +375,37 @@ export default function TasksListPage() {
             <input type="date" name="dueDate" className="w-full p-2 border rounded-md text-sm" />
           </div>
           <div className="flex items-center gap-2 pt-2">
-            <input type="checkbox" name="isRecurring" id="isRecurring" className="rounded" />
+            <input
+              type="checkbox"
+              name="isRecurring"
+              id="isRecurring"
+              className="rounded"
+              checked={isRecurring}
+              onChange={(e) => setIsRecurring(e.target.checked)}
+            />
             <label htmlFor="isRecurring" className="text-sm font-medium">Is Recurring?</label>
           </div>
+
+          {isRecurring && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Frequency</label>
+                <select name="frequency" className="w-full p-2 border rounded-md text-sm">
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="FORTNIGHTLY">Fortnightly</option>
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="QUARTERLY">Quarterly</option>
+                  <option value="ANNUAL">Annual</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">End Date (Optional)</label>
+                <input type="date" name="recurringEnd" className="w-full p-2 border rounded-md text-sm" />
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-1">Description / Notes</label>
             <textarea name="description" rows={3} className="w-full p-2 border rounded-md text-sm" />
@@ -440,26 +433,6 @@ export default function TasksListPage() {
             </div>
 
             {/* Details */}
-            <div className="mb-4">
-              <div className="text-muted-foreground text-sm mb-2">Priority</div>
-              <div className="flex gap-2">
-                {['LOW', 'MEDIUM', 'HIGH'].map(p => (
-                  <button
-                    key={p}
-                    onClick={() => handleUpdateField('priority', p)}
-                    className={cn(
-                      "px-3 py-1 rounded-full text-xs font-semibold transition-colors border",
-                      selectedTask.priority === p
-                        ? p === 'HIGH' ? 'bg-red-500 text-white border-red-500' : p === 'MEDIUM' ? 'bg-orange-500 text-white border-orange-500' : 'bg-green-500 text-white border-green-500'
-                        : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
-                    )}
-                  >
-                    {p.charAt(0) + p.slice(1).toLowerCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="grid grid-cols-2 gap-4 text-sm border-y py-4">
               <div>
                 <div className="text-muted-foreground mb-1">Client</div>
@@ -479,28 +452,6 @@ export default function TasksListPage() {
                   <Calendar className="w-4 h-4" />
                   {selectedTask.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString() : "-"}
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground mb-1">Assignee</div>
-                <select
-                  value={selectedTask.assignedToId || ""}
-                  onChange={(e) => handleUpdateField('assignedToId', e.target.value)}
-                  className="w-full p-1 border rounded-md text-sm"
-                >
-                  <option value="">Unassigned</option>
-                  {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <div className="text-muted-foreground mb-1">Reviewer</div>
-                <select
-                  value={selectedTask.reviewerId || ""}
-                  onChange={(e) => handleUpdateField('reviewerId', e.target.value)}
-                  className="w-full p-1 border rounded-md text-sm"
-                >
-                  <option value="">No Reviewer</option>
-                  {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
               </div>
             </div>
 
@@ -582,33 +533,15 @@ export default function TasksListPage() {
               </div>
             )}
 
-            {/* Description & Notes */}
-            <div className="space-y-3">
-              <h3 className="font-semibold text-lg">Description & Notes</h3>
-              {selectedTask.description && (
+            {/* Description */}
+            {selectedTask.description && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">Description</h3>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/30 p-4 rounded-lg border">
                   {selectedTask.description}
                 </p>
-              )}
-              <div className="pt-2">
-                <textarea
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Add a new note..."
-                  rows={3}
-                  className="w-full p-3 border rounded-lg text-sm bg-background mb-2"
-                />
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleAddNote}
-                    disabled={!newNote.trim()}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
-                  >
-                    Save Note
-                  </button>
-                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </SlideOver>
