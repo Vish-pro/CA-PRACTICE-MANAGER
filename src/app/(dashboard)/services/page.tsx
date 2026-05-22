@@ -156,7 +156,11 @@ export default function ServicesPage() {
         <div className="flex items-center gap-3">
           <Avatar name={row.name} size="sm" />
           <span className="font-medium">{row.name}</span>
-          {row.isLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
+          {row.isLocked && (
+            <div title="System default service (cannot be deleted)" className="flex items-center">
+              <Lock className="w-3 h-3 text-muted-foreground cursor-help" />
+            </div>
+          )}
         </div>
       )
     },
@@ -170,6 +174,15 @@ export default function ServicesPage() {
       header: "Professional Fee",
       accessorKey: "professionalFee",
       cell: (row) => row.professionalFee > 0 ? `₹${row.professionalFee.toLocaleString()}` : "-"
+    },
+    {
+      header: "Assigned Clients",
+      accessorKey: "assignedClients",
+      cell: (row) => (
+        <span className="font-medium text-muted-foreground">
+          {row.assignedClients || 0}
+        </span>
+      )
     },
     {
       header: "SOP",
@@ -266,11 +279,17 @@ export default function ServicesPage() {
         </div>
       </div>
 
-      <CategoryPills
-        categories={CATEGORIES}
-        active={category}
-        onChange={setCategory}
-      />
+      <div>
+        <CategoryPills
+          categories={CATEGORIES}
+          active={category}
+          onChange={setCategory}
+        />
+        <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+          <Lock className="w-3 h-3" />
+          <span>System default services are locked and cannot be deleted</span>
+        </div>
+      </div>
 
       <DataTable
         columns={columns}

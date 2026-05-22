@@ -11,7 +11,8 @@ export async function GET(request: Request) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
-    const stage = searchParams.get('stage');
+    const stages = searchParams.get('stages');
+    const sources = searchParams.get('sources');
     const search = searchParams.get('search');
 
     // Pagination
@@ -20,8 +21,11 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (stage && stage !== 'ALL') {
-      where.stage = stage;
+    if (stages) {
+      where.stage = { in: stages.split(',') };
+    }
+    if (sources) {
+      where.source = { in: sources.split(',') };
     }
     if (search) {
       where.OR = [

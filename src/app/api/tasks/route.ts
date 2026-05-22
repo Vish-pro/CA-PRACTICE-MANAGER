@@ -22,19 +22,48 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
 
-    const where: any = {};
-    if (category && category !== 'All Categories') where.category = category;
-    if (status && status !== 'all') where.status = status;
-    if (assigneeId) where.assignedToId = assigneeId;
-    if (clientId) where.clientId = clientId;
+    const whereAnd: any[] = [];
+    if (category && category !== 'All Categories') whereAnd.push({ category });
+    if (assigneeId) whereAnd.push({ assignedToId: assigneeId });
+    if (clientId) whereAnd.push({ clientId });
+
+    const now = new Date();
+
+    if (status && status !== 'all') {
+      if (status === 'OVERDUE') {
+        whereAnd.push({
+          OR: [
+            { status: 'OVERDUE' },
+            {
+              status: { notIn: ['COMPLETED', 'CANCELLED'] },
+              dueDate: { lt: now }
+            }
+          ]
+        });
+      } else if (['PENDING', 'IN_PROGRESS', 'SENT_FOR_REVIEW', 'REQUEST_CHANGES'].includes(status)) {
+        whereAnd.push({ status: status });
+        whereAnd.push({
+          OR: [
+            { dueDate: { gte: now } },
+            { dueDate: null }
+          ]
+        });
+      } else {
+        whereAnd.push({ status: status });
+      }
+    }
 
     if (search) {
-      where.OR = [
-        { title: { contains: search } },
-        { client: { companyName: { contains: search } } },
-        { service: { name: { contains: search } } }
-      ];
+      whereAnd.push({
+        OR: [
+          { title: { contains: search } },
+          { client: { companyName: { contains: search } } },
+          { service: { name: { contains: search } } }
+        ]
+      });
     }
+
+    const where = whereAnd.length > 0 ? { AND: whereAnd } : {};
 
     const tasks = await prisma.task.findMany({
       where,
@@ -49,9 +78,21 @@ export async function GET(request: Request) {
       }
     });
 
+    const mappedTasks = tasks.map((task: any) => {
+      let computedStatus = task.status;
+      if (
+        !['COMPLETED', 'CANCELLED', 'OVERDUE'].includes(task.status) &&
+        task.dueDate &&
+        new Date(task.dueDate) < now
+      ) {
+        computedStatus = 'OVERDUE';
+      }
+      return { ...task, status: computedStatus };
+    });
+
     const total = await prisma.task.count({ where });
 
-    return NextResponse.json({ data: tasks, total, page, limit });
+    return NextResponse.json({ data: mappedTasks, total, page, limit });
   } catch (error) {
     console.error('Failed to fetch tasks', error);
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
