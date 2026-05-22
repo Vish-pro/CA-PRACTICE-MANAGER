@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function ReportsRootRedirect() {
-  redirect("/reports/financial");
+  redirect("/reports/leads-pipeline");
 }
