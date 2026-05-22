@@ -54,6 +54,8 @@ export default function TasksListPage() {
   // Data for Add Task dropdowns (in real app, fetched from API)
   const [clients, setClients] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [isRecurring, setIsRecurring] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -64,6 +66,7 @@ export default function TasksListPage() {
     // Fetch clients and services for the Add Task form
     fetch('/api/clients').then(r => r.json()).then(d => setClients(d.data || []));
     fetch('/api/services').then(r => r.json()).then(d => setServices(d.data || []));
+    fetch('/api/users').then(r => r.json()).then(d => setUsers(d.data || []));
   }, []);
 
   const fetchTasks = async () => {
@@ -122,9 +125,9 @@ export default function TasksListPage() {
       reviewerId: formData.get("reviewerId") || null,
       priority: formData.get("priority"),
       dueDate: formData.get("dueDate"),
-      isRecurring: formData.get("isRecurring") === "on",
-      frequency: formData.get("frequency"),
-      recurringEnd: formData.get("recurringEnd") || null,
+      isRecurring: isRecurring,
+      frequency: isRecurring ? formData.get("frequency") : null,
+      recurringEnd: isRecurring ? (formData.get("recurringEnd") || null) : null,
       description: formData.get("description"),
     };
 
@@ -135,6 +138,7 @@ export default function TasksListPage() {
     });
 
     setIsAddOpen(false);
+    setIsRecurring(false); // Reset recurring state
     fetchTasks();
     fetchStats();
   };
@@ -313,7 +317,10 @@ export default function TasksListPage() {
       {/* Spec says: Add Task — Modal. Let's use SlideOver for consistency with detail, but can be a full modal. The slide-over is easier to scroll. Using SlideOver for forms is common. Let's stick to SlideOver as it provides more space. Wait, I will use SlideOver. */}
       <SlideOver
         open={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
+        onClose={() => {
+          setIsAddOpen(false);
+          setIsRecurring(false);
+        }}
         title="Create Task"
       >
         <form id="task-form" onSubmit={handleAddTask} className="space-y-4">
@@ -341,7 +348,20 @@ export default function TasksListPage() {
               {CATEGORIES.filter(c => c !== "All Categories").map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
-          {/* Note: Assignees should be fetched from staff users */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Assignee</label>
+            <select name="assignedToId" className="w-full p-2 border rounded-md text-sm">
+              <option value="">Select Assignee...</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Reviewer</label>
+            <select name="reviewerId" className="w-full p-2 border rounded-md text-sm">
+              <option value="">Select Reviewer...</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+            </select>
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1">Priority</label>
             <select name="priority" defaultValue="MEDIUM" className="w-full p-2 border rounded-md text-sm">
@@ -355,9 +375,37 @@ export default function TasksListPage() {
             <input type="date" name="dueDate" className="w-full p-2 border rounded-md text-sm" />
           </div>
           <div className="flex items-center gap-2 pt-2">
-            <input type="checkbox" name="isRecurring" id="isRecurring" className="rounded" />
+            <input
+              type="checkbox"
+              name="isRecurring"
+              id="isRecurring"
+              className="rounded"
+              checked={isRecurring}
+              onChange={(e) => setIsRecurring(e.target.checked)}
+            />
             <label htmlFor="isRecurring" className="text-sm font-medium">Is Recurring?</label>
           </div>
+
+          {isRecurring && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Frequency</label>
+                <select name="frequency" className="w-full p-2 border rounded-md text-sm">
+                  <option value="DAILY">Daily</option>
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="FORTNIGHTLY">Fortnightly</option>
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="QUARTERLY">Quarterly</option>
+                  <option value="ANNUAL">Annual</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">End Date (Optional)</label>
+                <input type="date" name="recurringEnd" className="w-full p-2 border rounded-md text-sm" />
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-1">Description / Notes</label>
             <textarea name="description" rows={3} className="w-full p-2 border rounded-md text-sm" />
