@@ -8,7 +8,7 @@ export default function EmailTemplatesPage() {
   const templates = [
     { id: 1, name: "Invoice Reminder", subject: "Payment Reminder: Invoice #{invoice_no}" },
     { id: 2, document: "Document Request", subject: "Required Documents for {service_name}" },
-    { id: 3, name: "Welcome Email", subject: "Welcome to Turia CA Firm" },
+    { id: 3, name: "Welcome Email", subject: "Welcome to Prabandh CA Firm" },
   ];
 
   return (

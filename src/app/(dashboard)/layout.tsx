@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="w-64 border-r bg-card flex flex-col">
         <div className="h-16 flex items-center px-6 border-b border-border">
           <LayoutDashboard className="w-6 h-6 text-primary mr-2" />
-          <span className="font-bold text-lg tracking-tight text-primary">Turia Clone</span>
+          <span className="font-bold text-lg tracking-tight text-primary">Prabandh</span>
         </div>
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
