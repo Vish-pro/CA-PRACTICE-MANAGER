@@ -50,10 +50,12 @@ export default function TasksListPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [newNote, setNewNote] = useState("");
 
   // Data for Add Task dropdowns (in real app, fetched from API)
   const [clients, setClients] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
 
   useEffect(() => {
     fetchTasks();
@@ -64,6 +66,7 @@ export default function TasksListPage() {
     // Fetch clients and services for the Add Task form
     fetch('/api/clients').then(r => r.json()).then(d => setClients(d.data || []));
     fetch('/api/services').then(r => r.json()).then(d => setServices(d.data || []));
+    fetch('/api/staff').then(r => r.json()).then(d => setStaff(d.data || []));
   }, []);
 
   const fetchTasks = async () => {
@@ -108,6 +111,27 @@ export default function TasksListPage() {
     }
   };
 
+  const handleAddNote = async () => {
+    if (!selectedTask || !newNote.trim()) return;
+
+    const timestamp = new Date().toLocaleString();
+    const userName = session?.user?.name || "User";
+    const noteEntry = `[${timestamp}] ${userName}:\n${newNote.trim()}`;
+    const updatedDescription = selectedTask.description
+      ? `${selectedTask.description}\n\n${noteEntry}`
+      : noteEntry;
+
+    await fetch(`/api/tasks/${selectedTask.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description: updatedDescription }),
+    });
+
+    setNewNote("");
+    handleRowClick(selectedTask); // refresh drawer
+    fetchTasks();
+  };
+
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
@@ -135,6 +159,24 @@ export default function TasksListPage() {
     });
 
     setIsAddOpen(false);
+    fetchTasks();
+    fetchStats();
+  };
+
+  const handleUpdateField = async (field: string, value: any) => {
+    if (!selectedTask) return;
+
+    // Optimistically update the UI
+    setSelectedTask((prev: any) => ({ ...prev, [field]: value }));
+
+    await fetch(`/api/tasks/${selectedTask.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value }),
+    });
+
+    // Refresh fully from server
+    handleRowClick(selectedTask);
     fetchTasks();
     fetchStats();
   };
@@ -341,7 +383,20 @@ export default function TasksListPage() {
               {CATEGORIES.filter(c => c !== "All Categories").map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
-          {/* Note: Assignees should be fetched from staff users */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Assignee</label>
+            <select name="assignedToId" className="w-full p-2 border rounded-md text-sm">
+              <option value="">Select Assignee...</option>
+              {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Reviewer</label>
+            <select name="reviewerId" className="w-full p-2 border rounded-md text-sm">
+              <option value="">Select Reviewer...</option>
+              {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1">Priority</label>
             <select name="priority" defaultValue="MEDIUM" className="w-full p-2 border rounded-md text-sm">
@@ -385,6 +440,26 @@ export default function TasksListPage() {
             </div>
 
             {/* Details */}
+            <div className="mb-4">
+              <div className="text-muted-foreground text-sm mb-2">Priority</div>
+              <div className="flex gap-2">
+                {['LOW', 'MEDIUM', 'HIGH'].map(p => (
+                  <button
+                    key={p}
+                    onClick={() => handleUpdateField('priority', p)}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-xs font-semibold transition-colors border",
+                      selectedTask.priority === p
+                        ? p === 'HIGH' ? 'bg-red-500 text-white border-red-500' : p === 'MEDIUM' ? 'bg-orange-500 text-white border-orange-500' : 'bg-green-500 text-white border-green-500'
+                        : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
+                    )}
+                  >
+                    {p.charAt(0) + p.slice(1).toLowerCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4 text-sm border-y py-4">
               <div>
                 <div className="text-muted-foreground mb-1">Client</div>
@@ -404,6 +479,28 @@ export default function TasksListPage() {
                   <Calendar className="w-4 h-4" />
                   {selectedTask.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString() : "-"}
                 </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1">Assignee</div>
+                <select
+                  value={selectedTask.assignedToId || ""}
+                  onChange={(e) => handleUpdateField('assignedToId', e.target.value)}
+                  className="w-full p-1 border rounded-md text-sm"
+                >
+                  <option value="">Unassigned</option>
+                  {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1">Reviewer</div>
+                <select
+                  value={selectedTask.reviewerId || ""}
+                  onChange={(e) => handleUpdateField('reviewerId', e.target.value)}
+                  className="w-full p-1 border rounded-md text-sm"
+                >
+                  <option value="">No Reviewer</option>
+                  {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
               </div>
             </div>
 
@@ -485,15 +582,33 @@ export default function TasksListPage() {
               </div>
             )}
 
-            {/* Description */}
-            {selectedTask.description && (
-              <div className="space-y-2">
-                <h3 className="font-semibold text-lg">Description</h3>
+            {/* Description & Notes */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Description & Notes</h3>
+              {selectedTask.description && (
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/30 p-4 rounded-lg border">
                   {selectedTask.description}
                 </p>
+              )}
+              <div className="pt-2">
+                <textarea
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="Add a new note..."
+                  rows={3}
+                  className="w-full p-3 border rounded-lg text-sm bg-background mb-2"
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleAddNote}
+                    disabled={!newNote.trim()}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
+                  >
+                    Save Note
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         )}
       </SlideOver>
