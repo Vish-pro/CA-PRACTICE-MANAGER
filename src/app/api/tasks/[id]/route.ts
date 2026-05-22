@@ -39,6 +39,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const body = await request.json();
 
+    let dueDate = body.dueDate ? new Date(body.dueDate) : undefined;
+
+    // If manually marking as OVERDUE and no explicit due date provided,
+    // set due date to yesterday
+    if (body.status === 'OVERDUE' && !body.dueDate) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(23, 59, 59, 0);
+      dueDate = yesterday;
+    }
+
     const task = await prisma.task.update({
       where: { id: resolvedParams.id },
       data: {
@@ -46,7 +57,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         description: body.description,
         status: body.status,
         priority: body.priority,
-        dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+        dueDate: dueDate,
         assignedToId: body.assignedToId,
         reviewerId: body.reviewerId,
         completedAt: body.status === 'COMPLETED' ? new Date() : null,
