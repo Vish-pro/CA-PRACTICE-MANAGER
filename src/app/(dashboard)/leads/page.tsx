@@ -1,63 +1,647 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus, UserPlus, Phone, Mail } from "lucide-react";
+import { useState, useEffect } from "react";
+import { SearchInput } from "@/components/ui/search-input";
+import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Avatar } from "@/components/ui/avatar";
+import { SlideOver } from "@/components/ui/slide-over";
+import { Modal } from "@/components/ui/modal";
+import { ConfirmByTyping } from "@/components/ui/confirm-by-typing";
+import { useSession } from "next-auth/react";
+import {
+  Clock, CheckCircle, UserX, Users, Percent,
+  MoreVertical, Filter, AlignJustify, Plus
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 export default function LeadsPage() {
-  const leadStatuses = ["NEW", "CONTACTED", "QUALIFIED", "CONVERTED", "LOST"];
+  const { data: session } = useSession();
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  const mockLeads = [
-    { id: 1, name: "Retail Solutions Ltd", source: "Website", status: "NEW", phone: "+91 9988776655" },
-    { id: 2, name: "Startup Hub", source: "Referral", status: "CONTACTED", phone: "+91 8877665544" },
-    { id: 3, name: "Rajesh Hardware", source: "Walk-in", status: "QUALIFIED", phone: "+91 7766554433" },
+  const [leads, setLeads] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState("ALL");
+
+  // Slide Over state
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isConvertOpen, setIsConvertOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+
+  // References for Convert Modal dropdowns
+  const [staff, setStaff] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchLeads();
+  }, [stageFilter, search]);
+
+  useEffect(() => {
+    // Note: To fetch staff users
+    // For now we will mock it or leave it as text fields if api doesn't exist
+  }, []);
+
+  const fetchLeads = async () => {
+    setLoading(true);
+    try {
+      const url = new URL("/api/leads", window.location.origin);
+      if (stageFilter !== "ALL") url.searchParams.append("stage", stageFilter);
+      if (search) url.searchParams.append("search", search);
+
+      const res = await fetch(url.toString());
+      const json = await res.json();
+      if (json.data) {
+        setLeads(json.data);
+        setStats(json.stats || {});
+      }
+    } catch (error) {
+      console.error("Failed to fetch leads", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRowClick = async (row: any) => {
+    try {
+      const res = await fetch(`/api/leads/${row.id}`);
+      const json = await res.json();
+      if (json.data) {
+        setSelectedLead(json.data);
+        setIsDetailOpen(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch lead details", error);
+    }
+  };
+
+  const handleAddLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+
+    const payload = {
+      businessName: formData.get("businessName"),
+      legalName: formData.get("legalName"),
+      businessEntity: formData.get("businessEntity"),
+      contactName: formData.get("contactName"),
+      contactEmail: formData.get("contactEmail"),
+      contactPhone: formData.get("contactPhone"),
+      source: formData.get("source"),
+      stage: formData.get("stage"),
+      dealValue: formData.get("dealValue"),
+      dealType: formData.get("dealType"),
+      notes: formData.get("notes"),
+    };
+
+    await fetch("/api/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    setIsAddOpen(false);
+    fetchLeads();
+  };
+
+  const handleUpdateStage = async (stage: string) => {
+    if (!selectedLead) return;
+    await fetch(`/api/leads/${selectedLead.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage }),
+    });
+    handleRowClick(selectedLead);
+    fetchLeads();
+  };
+
+  const handleDeleteLead = async () => {
+    if (!selectedLead) return;
+    await fetch(`/api/leads/${selectedLead.id}`, { method: "DELETE" });
+    setIsDetailOpen(false);
+    setIsDeleteConfirmOpen(false);
+    fetchLeads();
+  };
+
+  const handleConvertClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLead) return;
+
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+
+    const payload = {
+      businessName: formData.get("businessName"),
+      legalName: formData.get("legalName"),
+      businessEntity: formData.get("businessEntity"),
+      contactName: formData.get("contactName"),
+      contactEmail: selectedLead.contactEmail,
+      mobile: formData.get("mobile"),
+      gstNumber: formData.get("gstNumber"),
+      panNumber: formData.get("panNumber"),
+      address: formData.get("address"),
+      auditorId: formData.get("auditorId"),
+    };
+
+    const res = await fetch(`/api/leads/${selectedLead.id}/convert`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const json = await res.json();
+
+    if (json.data) {
+      setIsConvertOpen(false);
+      setIsDetailOpen(false);
+      fetchLeads();
+      window.location.href = `/clients/${json.data.id}`;
+    }
+  };
+
+  const calculateScoreColor = (score: number) => {
+    if (score < 30) return "bg-red-100 text-red-700";
+    if (score < 70) return "bg-orange-100 text-orange-700";
+    return "bg-green-100 text-green-700";
+  };
+
+  const calculateScoreProgressColor = (score: number) => {
+    if (score < 30) return "bg-red-500";
+    if (score < 70) return "bg-orange-500";
+    return "bg-green-500";
+  };
+
+  const columns: ColumnDef<any>[] = [
+    {
+      header: "Created On",
+      cell: (row) => format(new Date(row.createdAt), "MMM dd, yyyy"),
+      className: "whitespace-nowrap"
+    },
+    {
+      header: "Business Name",
+      cell: (row) => (
+        <div className="flex items-center gap-3">
+          <Avatar name={row.businessName} size="sm" />
+          <span className="font-bold">{row.businessName}</span>
+        </div>
+      )
+    },
+    {
+      header: "Business Entity",
+      accessorKey: "businessEntity",
+      cell: (row) => row.businessEntity || "-"
+    },
+    {
+      header: "Contact Person",
+      cell: (row) => row.contactName ? (
+        <div className="flex items-center gap-2">
+          <Avatar name={row.contactName} size="sm" />
+          <span>{row.contactName}</span>
+        </div>
+      ) : "-"
+    },
+    {
+      header: "Contact No",
+      accessorKey: "contactPhone",
+      cell: (row) => row.contactPhone || "-"
+    },
+    {
+      header: "Lead Score",
+      cell: (row) => (
+        <div className="w-16">
+          <div className={cn("inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-bold mb-1", calculateScoreColor(row.leadScore))}>
+            {row.leadScore}
+          </div>
+          <div className="w-full bg-muted rounded-full h-1">
+            <div
+              className={cn("h-1 rounded-full", calculateScoreProgressColor(row.leadScore))}
+              style={{ width: `${row.leadScore}%` }}
+            />
+          </div>
+        </div>
+      )
+    },
+    {
+      header: "Stage",
+      accessorKey: "stage",
+      cell: (row) => <StatusBadge status={row.stage} />
+    },
+    {
+      header: "Deal Value",
+      cell: (row) => row.dealValue ? `₹${row.dealValue.toLocaleString()}` : "-"
+    },
+    {
+      header: "Deal Type",
+      accessorKey: "dealType",
+      cell: (row) => row.dealType || "-"
+    },
+    {
+      header: "User (Assigned)",
+      cell: (row) => row.assignedTo ? <Avatar name={row.assignedTo.name} size="sm" title={row.assignedTo.name} /> : "-"
+    }
   ];
 
+  const conversionRate = stats.total > 0 ? Math.round((stats.converted / stats.total) * 100) : 0;
+
   return (
-    <div className="space-y-6 h-full flex flex-col">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Lead Management</h2>
-          <p className="text-muted-foreground">Capture, assign, and track leads through your sales pipeline.</p>
+    <div className="space-y-6">
+      {/* Stats Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-gray-50 border rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <div className="text-3xl font-bold">{stats.open || 0}</div>
+            <div className="text-xs text-muted-foreground mt-1">Open</div>
+          </div>
+          <Clock className="w-10 h-10 text-gray-300" />
         </div>
-        <Button><Plus className="w-4 h-4 mr-2" /> Add Lead</Button>
+        <div className="bg-green-50 border border-green-100 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <div className="text-3xl font-bold text-green-700">{stats.converted || 0}</div>
+            <div className="text-xs text-green-600/80 mt-1">Converted</div>
+          </div>
+          <CheckCircle className="w-10 h-10 text-green-200" />
+        </div>
+        <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <div className="text-3xl font-bold text-red-700">{stats.lost || 0}</div>
+            <div className="text-xs text-red-600/80 mt-1">Lost</div>
+          </div>
+          <UserX className="w-10 h-10 text-red-200" />
+        </div>
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <div className="text-3xl font-bold text-blue-700">{stats.total || 0}</div>
+            <div className="text-xs text-blue-600/80 mt-1">Total Leads</div>
+          </div>
+          <Users className="w-10 h-10 text-blue-200" />
+        </div>
+        <div className="bg-cyan-50 border border-cyan-100 rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <div className="text-3xl font-bold text-cyan-700">{conversionRate}%</div>
+            <div className="text-xs text-cyan-600/80 mt-1">Conversion Rate</div>
+          </div>
+          <Percent className="w-10 h-10 text-cyan-200" />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1 pb-6 overflow-x-auto">
-        {leadStatuses.map(status => (
-          <div key={status} className="flex flex-col h-full bg-muted/30 rounded-xl p-4 min-w-[250px]">
-            <h3 className="font-semibold text-sm mb-4 flex items-center justify-between text-muted-foreground">
-              {status}
-              <span className="bg-background px-2 py-0.5 rounded-full text-xs">
-                {mockLeads.filter(l => l.status === status).length}
-              </span>
-            </h3>
-            <div className="space-y-3 flex-1 overflow-y-auto">
-              {mockLeads.filter(l => l.status === status).map(lead => (
-                <Card key={lead.id} className="cursor-pointer hover:border-primary transition-colors">
-                  <CardContent className="p-4 space-y-2">
-                    <p className="font-medium text-sm leading-tight flex items-start justify-between">
-                      {lead.name}
-                      <UserPlus className="w-4 h-4 text-muted-foreground" />
-                    </p>
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <div className="flex items-center"><Phone className="w-3 h-3 mr-1" /> {lead.phone}</div>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="bg-secondary/10 text-secondary px-2 py-0.5 rounded text-[10px] uppercase font-bold">{lead.source}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {mockLeads.filter(l => l.status === status).length === 0 && (
-                <div className="h-24 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground/50 text-sm">
-                  Drop here
-                </div>
-              )}
+      {/* Table Toolbar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-lg font-bold">Leads ({leads.length})</h1>
+        <div className="flex items-center gap-2">
+          <SearchInput
+            placeholder="Search..."
+            value={search}
+            onChange={setSearch}
+            className="w-48 sm:w-64"
+          />
+          <button className="flex items-center gap-2 px-3 py-2 border rounded-md hover:bg-muted text-sm font-medium transition-colors">
+            <Filter className="w-4 h-4" /> Filters <span className="text-xs">▼</span>
+          </button>
+          <button className="p-2 border rounded-md hover:bg-muted transition-colors">
+            <AlignJustify className="w-5 h-5 text-muted-foreground" />
+          </button>
+          <div className="relative group">
+            <button className="p-2 border rounded-md hover:bg-muted transition-colors">
+              <MoreVertical className="w-5 h-5 text-muted-foreground" />
+            </button>
+            <div className="absolute right-0 mt-1 hidden group-hover:block w-40 bg-popover border shadow-lg rounded-md z-50">
+              <button
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
+                onClick={() => setIsAddOpen(true)}
+              >
+                <Plus className="w-4 h-4" /> Add Lead
+              </button>
             </div>
           </div>
-        ))}
+        </div>
       </div>
+
+      <DataTable
+        columns={columns}
+        data={leads}
+        keyExtractor={(row) => row.id}
+        selectable
+        onRowClick={handleRowClick}
+      />
+
+      {/* Add Lead Modal */}
+      <SlideOver
+        open={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        title="Add Lead"
+      >
+        <form id="lead-form" onSubmit={handleAddLead} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Business Name <span className="text-red-500">*</span></label>
+            <input name="businessName" required className="w-full p-2 border rounded-md text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Legal Name</label>
+            <input name="legalName" className="w-full p-2 border rounded-md text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Business Entity</label>
+            <select name="businessEntity" className="w-full p-2 border rounded-md text-sm">
+              <option value="">Select...</option>
+              <option value="Public Limited">Public Limited</option>
+              <option value="Private Limited">Private Limited</option>
+              <option value="Partnership">Partnership Firm</option>
+              <option value="LLP">LLP</option>
+              <option value="Proprietorship">Proprietorship</option>
+              <option value="Trust">Trust</option>
+              <option value="HUF">HUF</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Contact Person</label>
+              <input name="contactName" className="w-full p-2 border rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone</label>
+              <input type="tel" name="contactPhone" className="w-full p-2 border rounded-md text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <input type="email" name="contactEmail" className="w-full p-2 border rounded-md text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Source</label>
+              <select name="source" className="w-full p-2 border rounded-md text-sm">
+                <option value="Website">Website</option>
+                <option value="Referral">Referral</option>
+                <option value="Walk-in">Walk-in</option>
+                <option value="Social Media">Social Media</option>
+                <option value="Cold Call">Cold Call</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Stage</label>
+              <select name="stage" defaultValue="NEW" className="w-full p-2 border rounded-md text-sm">
+                <option value="NEW">New</option>
+                <option value="CONTACTED">Contacted</option>
+                <option value="QUALIFIED">Qualified</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Deal Value (₹)</label>
+              <input type="number" name="dealValue" className="w-full p-2 border rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Deal Type</label>
+              <select name="dealType" className="w-full p-2 border rounded-md text-sm">
+                <option value="">Select...</option>
+                <option value="One-time">One-time</option>
+                <option value="Recurring">Recurring</option>
+                <option value="Retainer">Retainer</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes</label>
+            <textarea name="notes" rows={3} className="w-full p-2 border rounded-md text-sm" />
+          </div>
+        </form>
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" onClick={() => setIsAddOpen(false)} className="px-4 py-2 border rounded-md text-sm font-medium">Cancel</button>
+          <button form="lead-form" type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium">Add Lead</button>
+        </div>
+      </SlideOver>
+
+      {/* Lead Detail Drawer */}
+      <SlideOver
+        open={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        title=""
+      >
+        {selectedLead && (
+          <div className="space-y-6 pb-10">
+            {/* Header */}
+            <div>
+              <h2 className="text-2xl font-bold mb-2">{selectedLead.businessName}</h2>
+              <StatusBadge status={selectedLead.stage} />
+            </div>
+
+            {/* Lead Info */}
+            <div className="grid grid-cols-2 gap-4 text-sm bg-muted/30 p-4 rounded-lg border border-border/50">
+              <div>
+                <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">Created On</div>
+                <div className="font-medium">{format(new Date(selectedLead.createdAt), "MMM dd, yyyy")}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">Source</div>
+                <div className="font-medium">{selectedLead.source || "-"}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">Entity Type</div>
+                <div className="font-medium">{selectedLead.businessEntity || "-"}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">Score</div>
+                <div className="w-full max-w-[100px] mt-1">
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div
+                      className={cn("h-1.5 rounded-full", calculateScoreProgressColor(selectedLead.leadScore))}
+                      style={{ width: `${selectedLead.leadScore}%` }}
+                    />
+                  </div>
+                  <div className="text-right text-xs mt-0.5">{selectedLead.leadScore}/100</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Info */}
+            <div className="space-y-3">
+              <h3 className="font-semibold border-b pb-2">Contact Details</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground mb-1">Person</div>
+                  <div className="font-medium">{selectedLead.contactName || "-"}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground mb-1">Phone</div>
+                  <div className="font-medium">{selectedLead.contactPhone || "-"}</div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-muted-foreground mb-1">Email</div>
+                  <div className="font-medium">{selectedLead.contactEmail || "-"}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Deal Info */}
+            <div className="space-y-3">
+              <h3 className="font-semibold border-b pb-2">Deal Information</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground mb-1">Deal Value</div>
+                  <div className="font-medium">{selectedLead.dealValue ? `₹${selectedLead.dealValue.toLocaleString()}` : "-"}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground mb-1">Deal Type</div>
+                  <div className="font-medium">{selectedLead.dealType || "-"}</div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-muted-foreground mb-1">Stage</div>
+                  <select
+                    className="w-full p-2 border rounded-md text-sm mt-1 bg-background"
+                    value={selectedLead.stage}
+                    onChange={(e) => handleUpdateStage(e.target.value)}
+                  >
+                    <option value="NEW">New</option>
+                    <option value="CONTACTED">Contacted</option>
+                    <option value="QUALIFIED">Qualified</option>
+                    <option value="CONVERTED">Converted</option>
+                    <option value="LOST">Lost</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Assignment Info */}
+            <div className="space-y-3">
+              <h3 className="font-semibold border-b pb-2">Assignment</h3>
+              <div className="text-sm">
+                <div className="text-muted-foreground mb-1">Assigned To</div>
+                <div className="font-medium flex items-center gap-2">
+                  {selectedLead.assignedTo ? (
+                    <>
+                      <Avatar name={selectedLead.assignedTo.name} size="sm" />
+                      {selectedLead.assignedTo.name}
+                    </>
+                  ) : "-"}
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-3">
+              <h3 className="font-semibold border-b pb-2">Notes</h3>
+              {selectedLead.notes ? (
+                <div className="p-3 bg-muted/30 border rounded-md text-sm whitespace-pre-wrap">
+                  {selectedLead.notes}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground italic">No notes added.</div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="pt-6 mt-6 border-t flex flex-col gap-3">
+              {selectedLead.stage !== "CONVERTED" && (
+                <button
+                  onClick={() => setIsConvertOpen(true)}
+                  className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"
+                >
+                  Convert to Client
+                </button>
+              )}
+              {selectedLead.stage !== "LOST" && selectedLead.stage !== "CONVERTED" && (
+                <button
+                  onClick={() => handleUpdateStage("LOST")}
+                  className="w-full py-2.5 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-sm font-medium transition-colors"
+                >
+                  Mark as Lost
+                </button>
+              )}
+              <button
+                onClick={() => setIsDeleteConfirmOpen(true)}
+                className="w-full py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-sm font-medium transition-colors mt-4"
+              >
+                Delete Lead
+              </button>
+            </div>
+          </div>
+        )}
+      </SlideOver>
+
+      {/* Convert to Client Modal */}
+      <Modal
+        open={isConvertOpen}
+        onClose={() => setIsConvertOpen(false)}
+        title="Convert to Client"
+        maxWidth="md"
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <button type="button" onClick={() => setIsConvertOpen(false)} className="px-4 py-2 border rounded-md text-sm font-medium">Cancel</button>
+            <button form="convert-form" type="submit" className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium">Convert & Create Client</button>
+          </div>
+        }
+      >
+        {selectedLead && (
+          <form id="convert-form" onSubmit={handleConvertClient} className="space-y-4">
+            <div className="bg-muted/30 p-4 rounded-lg mb-6 border">
+              <p className="text-sm text-muted-foreground mb-1">Converting Lead:</p>
+              <p className="font-semibold">{selectedLead.businessName}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Business Name <span className="text-red-500">*</span></label>
+              <input name="businessName" defaultValue={selectedLead.businessName} required className="w-full p-2 border rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Legal Name</label>
+              <input name="legalName" defaultValue={selectedLead.legalName} className="w-full p-2 border rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Business Entity <span className="text-red-500">*</span></label>
+              <select name="businessEntity" defaultValue={selectedLead.businessEntity} required className="w-full p-2 border rounded-md text-sm">
+                <option value="">Select...</option>
+                <option value="Public Limited">Public Limited</option>
+                <option value="Private Limited">Private Limited</option>
+                <option value="Partnership">Partnership Firm</option>
+                <option value="LLP">LLP</option>
+                <option value="Proprietorship">Proprietorship</option>
+                <option value="Trust">Trust</option>
+                <option value="HUF">HUF</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Contact Name</label>
+                <input name="contactName" defaultValue={selectedLead.contactName} className="w-full p-2 border rounded-md text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Mobile</label>
+                <input type="tel" name="mobile" defaultValue={selectedLead.contactPhone} className="w-full p-2 border rounded-md text-sm" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">GST Number</label>
+                <input name="gstNumber" className="w-full p-2 border rounded-md text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">PAN Number</label>
+                <input name="panNumber" className="w-full p-2 border rounded-md text-sm" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Address</label>
+              <textarea name="address" rows={2} className="w-full p-2 border rounded-md text-sm" />
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <ConfirmByTyping
+        open={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteLead}
+        title="Delete Lead"
+        description={`Permanently delete "${selectedLead?.businessName}"? All lead data will be lost.`}
+        confirmName={session?.user?.name || "Admin"}
+        actionLabel="Yes, Delete Lead"
+      />
     </div>
   );
 }
