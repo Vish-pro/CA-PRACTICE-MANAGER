@@ -6,7 +6,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
-import { Phone, Mail, Building2, MapPin, Hash, Users, Activity } from "lucide-react";
+import { Phone, Mail, Building2, MapPin, Hash, Users, Activity, Plus, Trash2 } from "lucide-react";
+import { SlideOver } from "@/components/ui/slide-over";
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -16,13 +17,16 @@ export default function ClientDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Overview");
 
+  // Services State
+  const [clientServices, setClientServices] = useState<any[]>([]);
+  const [availableServices, setAvailableServices] = useState<any[]>([]);
+  const [isAssignSlideOpen, setIsAssignSlideOpen] = useState(false);
+  const [assigningService, setAssigningService] = useState({ serviceId: "", customPrice: "" });
+  const [servicesLoading, setServicesLoading] = useState(false);
+
   const tabs = [
     "Overview", "Tasks", "Services", "Documents", "DSC", "Licenses", "Passwords", "Invoices", "Notes"
   ];
-
-  useEffect(() => {
-    fetchClient();
-  }, [id]);
 
   const fetchClient = async () => {
     setLoading(true);
@@ -39,6 +43,71 @@ export default function ClientDetailPage() {
     }
   };
 
+  const fetchClientServices = async () => {
+    setServicesLoading(true);
+    try {
+      const res = await fetch(`/api/clients/${id}/services`);
+      const json = await res.json();
+      if (json.data) setClientServices(json.data);
+    } catch (error) {
+      console.error("Failed to fetch client services", error);
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
+  const fetchAllServices = async () => {
+    try {
+      const res = await fetch('/api/services');
+      const json = await res.json();
+      if (json.data) setAvailableServices(json.data);
+    } catch (error) {
+      console.error("Failed to fetch all services", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchClient();
+  }, [id]);
+
+  useEffect(() => {
+    if (activeTab === "Services") {
+      fetchClientServices();
+      fetchAllServices();
+    }
+  }, [activeTab, id]);
+
+  const handleAssignService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/clients/${id}/services`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(assigningService)
+      });
+      if (res.ok) {
+        setIsAssignSlideOpen(false);
+        setAssigningService({ serviceId: "", customPrice: "" });
+        fetchClientServices();
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || "Failed to assign service");
+      }
+    } catch (error) {
+      console.error("Failed to assign service", error);
+    }
+  };
+
+  const handleDetachService = async (serviceId: string) => {
+    if (!confirm("Are you sure you want to remove this service from the client?")) return;
+    try {
+      await fetch(`/api/clients/${id}/services?serviceId=${serviceId}`, { method: "DELETE" });
+      fetchClientServices();
+    } catch (error) {
+      console.error("Failed to detach service", error);
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-muted-foreground">Loading client details...</div>;
   if (!client) return <div className="p-8 text-center text-red-500">Client not found.</div>;
 
@@ -52,6 +121,26 @@ export default function ClientDetailPage() {
     { header: "Title", accessorKey: "title" },
     { header: "Service", cell: (row) => row.service?.name || "-" },
     { header: "Status", cell: (row) => <StatusBadge status={row.status} /> },
+  ];
+
+  const serviceColumns: ColumnDef<any>[] = [
+    { header: "Service Name", cell: (row) => <span className="font-medium">{row.service?.name}</span> },
+    { header: "Category", cell: (row) => row.service?.category },
+    { header: "Frequency", cell: (row) => row.service?.frequency },
+    { header: "Professional Fee", cell: (row) => `₹${row.service?.professionalFee.toLocaleString()}` },
+    { header: "Custom Price", cell: (row) => row.customPrice ? `₹${row.customPrice.toLocaleString()}` : "Standard" },
+    {
+      header: "Action",
+      cell: (row) => (
+        <button
+          onClick={() => handleDetachService(row.serviceId)}
+          className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+          title="Remove Service"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )
+    }
   ];
 
   return (
@@ -208,7 +297,48 @@ export default function ClientDetailPage() {
             </div>
           )}
 
-          {["Services", "Documents", "DSC", "Licenses", "Passwords", "Invoices", "Notes"].includes(activeTab) && (
+          {activeTab === "Services" && (
+            <div className="bg-card border rounded-xl p-5 shadow-sm min-h-[400px]">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="font-semibold text-lg">Assigned Services</h3>
+                  <p className="text-sm text-muted-foreground">Manage the services provided to this client.</p>
+                </div>
+                <button
+                  onClick={() => setIsAssignSlideOpen(true)}
+                  className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Assign Service
+                </button>
+              </div>
+
+              {servicesLoading ? (
+                <div className="p-8 text-center text-muted-foreground">Loading services...</div>
+              ) : clientServices.length > 0 ? (
+                <DataTable columns={serviceColumns} data={clientServices} keyExtractor={(r) => r.id} />
+              ) : (
+                <div className="p-12 text-center border-2 border-dashed rounded-xl bg-muted/20">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4">
+                    <Activity className="w-6 h-6 text-primary" />
+                  </div>
+                  <h4 className="text-lg font-semibold mb-2">No services assigned</h4>
+                  <p className="text-muted-foreground max-w-sm mx-auto mb-6">
+                    This client does not have any active services. Assign a service to start tracking tasks and billing.
+                  </p>
+                  <button
+                    onClick={() => setIsAssignSlideOpen(true)}
+                    className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Assign Service
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {["Documents", "DSC", "Licenses", "Passwords", "Invoices", "Notes"].includes(activeTab) && (
             <div className="bg-card border rounded-xl p-8 shadow-sm min-h-[400px] flex items-center justify-center">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4">
@@ -221,6 +351,63 @@ export default function ClientDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Assign Service SlideOver */}
+      <SlideOver
+        open={isAssignSlideOpen}
+        onClose={() => setIsAssignSlideOpen(false)}
+        title="Assign Service to Client"
+      >
+        <div className="mb-6 text-sm text-muted-foreground">Select a service and set an optional custom price for this client.</div>
+        <form onSubmit={handleAssignService} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Select Service</label>
+            <select
+              value={assigningService.serviceId}
+              onChange={(e) => setAssigningService({ ...assigningService, serviceId: e.target.value })}
+              className="w-full p-2.5 bg-background border border-input rounded-md text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              required
+            >
+              <option value="">-- Select a service --</option>
+              {availableServices.filter(s => !clientServices.some(cs => cs.serviceId === s.id)).map(service => (
+                <option key={service.id} value={service.id}>
+                  {service.name} ({service.category}) - ₹{service.professionalFee.toLocaleString()}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Custom Price (₹) <span className="text-muted-foreground font-normal">(Optional)</span></label>
+            <input
+              type="number"
+              value={assigningService.customPrice}
+              onChange={(e) => setAssigningService({ ...assigningService, customPrice: e.target.value })}
+              className="w-full p-2.5 bg-background border border-input rounded-md text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              placeholder="Leave blank to use standard fee"
+              min="0"
+            />
+            <p className="text-xs text-muted-foreground">Overrides the default professional fee for this client.</p>
+          </div>
+
+          <div className="pt-4 border-t flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsAssignSlideOpen(false)}
+              className="px-4 py-2 text-sm font-medium border border-input bg-background rounded-md hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!assigningService.serviceId}
+              className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
+            >
+              Assign Service
+            </button>
+          </div>
+        </form>
+      </SlideOver>
     </div>
   );
 }
