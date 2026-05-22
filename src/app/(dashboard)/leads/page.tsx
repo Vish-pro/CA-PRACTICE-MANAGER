@@ -526,13 +526,35 @@ export default function LeadsPage() {
             {/* Notes */}
             <div className="space-y-3">
               <h3 className="font-semibold border-b pb-2">Notes</h3>
-              {selectedLead.notes ? (
-                <div className="p-3 bg-muted/30 border rounded-md text-sm whitespace-pre-wrap">
+              {selectedLead.notes && (
+                <div className="p-3 bg-muted/30 border rounded-md text-sm whitespace-pre-wrap text-muted-foreground">
                   {selectedLead.notes}
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground italic">No notes added.</div>
               )}
+              <textarea
+                rows={3}
+                placeholder="Add a note..."
+                id="lead-note-input"
+                className="w-full p-3 border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              <button
+                onClick={async () => {
+                  const el = document.getElementById('lead-note-input') as HTMLTextAreaElement;
+                  if (!el?.value.trim()) return;
+                  const existing = selectedLead.notes || '';
+                  const newNotes = existing ? existing + '\n\n' + el.value.trim() : el.value.trim();
+                  await fetch(`/api/leads/${selectedLead.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notes: newNotes }),
+                  });
+                  el.value = '';
+                  handleRowClick(selectedLead);
+                }}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium"
+              >
+                Add Note
+              </button>
             </div>
 
             {/* Actions */}
