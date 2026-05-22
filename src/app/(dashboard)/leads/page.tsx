@@ -19,6 +19,9 @@ import { format } from "date-fns";
 export default function LeadsPage() {
   const { data: session } = useSession();
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [activeStatCard, setActiveStatCard] = useState<string>("ALL");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [leads, setLeads] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
@@ -39,7 +42,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     fetchLeads();
-  }, [stageFilter, search]);
+  }, [stageFilter, search, activeStatCard]);
 
   useEffect(() => {
     // Note: To fetch staff users
@@ -53,10 +56,19 @@ export default function LeadsPage() {
       if (stageFilter !== "ALL") url.searchParams.append("stage", stageFilter);
       if (search) url.searchParams.append("search", search);
 
+      if (activeStatCard === "OPEN") {
+        url.searchParams.set("stages", "NEW,CONTACTED,QUALIFIED");
+      } else if (activeStatCard === "CONVERTED") {
+        url.searchParams.set("stage", "CONVERTED");
+      } else if (activeStatCard === "LOST") {
+        url.searchParams.set("stage", "LOST");
+      }
+
       const res = await fetch(url.toString());
       const json = await res.json();
       if (json.data) {
         setLeads(json.data);
+        setSelectedIds(new Set());
         setStats(json.stats || {});
       }
     } catch (error) {
@@ -125,6 +137,19 @@ export default function LeadsPage() {
     setIsDetailOpen(false);
     setIsDeleteConfirmOpen(false);
     fetchLeads();
+  };
+
+  const handleSelectChange = (id: string, selected: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (selected) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) setSelectedIds(new Set(leads.map(l => l.id)));
+    else setSelectedIds(new Set());
   };
 
   const handleConvertClient = async (e: React.FormEvent) => {
@@ -212,7 +237,7 @@ export default function LeadsPage() {
     {
       header: "Lead Score",
       cell: (row) => (
-        <div className="w-16">
+        <div className="w-16" title="Lead Score: 0–100 qualification score. Red = cold, Orange = warm, Green = hot.">
           <div className={cn("inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-bold mb-1", calculateScoreColor(row.leadScore))}>
             {row.leadScore}
           </div>
@@ -251,28 +276,40 @@ export default function LeadsPage() {
     <div className="space-y-6">
       {/* Stats Bar */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-gray-50 border rounded-xl p-4 flex items-center justify-between">
+        <div
+          onClick={() => setActiveStatCard("OPEN")}
+          className={cn("bg-white border rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "OPEN" ? "ring-2 ring-offset-1 ring-primary" : "")}
+        >
           <div>
             <div className="text-3xl font-bold">{stats.open || 0}</div>
             <div className="text-xs text-muted-foreground mt-1">Open</div>
           </div>
           <Clock className="w-10 h-10 text-gray-300" />
         </div>
-        <div className="bg-green-50 border border-green-100 rounded-xl p-4 flex items-center justify-between">
+        <div
+          onClick={() => setActiveStatCard("CONVERTED")}
+          className={cn("bg-green-50 border border-green-100 rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "CONVERTED" ? "ring-2 ring-offset-1 ring-green-500" : "")}
+        >
           <div>
             <div className="text-3xl font-bold text-green-700">{stats.converted || 0}</div>
             <div className="text-xs text-green-600/80 mt-1">Converted</div>
           </div>
           <CheckCircle className="w-10 h-10 text-green-200" />
         </div>
-        <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-center justify-between">
+        <div
+          onClick={() => setActiveStatCard("LOST")}
+          className={cn("bg-red-50 border border-red-100 rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "LOST" ? "ring-2 ring-offset-1 ring-red-500" : "")}
+        >
           <div>
             <div className="text-3xl font-bold text-red-700">{stats.lost || 0}</div>
             <div className="text-xs text-red-600/80 mt-1">Lost</div>
           </div>
           <UserX className="w-10 h-10 text-red-200" />
         </div>
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
+        <div
+          onClick={() => setActiveStatCard("ALL")}
+          className={cn("bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "ALL" ? "ring-2 ring-offset-1 ring-blue-500" : "")}
+        >
           <div>
             <div className="text-3xl font-bold text-blue-700">{stats.total || 0}</div>
             <div className="text-xs text-blue-600/80 mt-1">Total Leads</div>
@@ -287,6 +324,15 @@ export default function LeadsPage() {
           <Percent className="w-10 h-10 text-cyan-200" />
         </div>
       </div>
+
+      {activeStatCard !== "ALL" && (
+        <button
+          onClick={() => setActiveStatCard("ALL")}
+          className="text-xs text-muted-foreground hover:text-foreground underline"
+        >
+          Clear filter
+        </button>
+      )}
 
       {/* Table Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -304,18 +350,27 @@ export default function LeadsPage() {
           <button className="p-2 border rounded-md hover:bg-muted transition-colors">
             <AlignJustify className="w-5 h-5 text-muted-foreground" />
           </button>
-          <div className="relative group">
-            <button className="p-2 border rounded-md hover:bg-muted transition-colors">
+          <div className="relative">
+            <button
+              className="p-2 border rounded-md hover:bg-muted transition-colors"
+              onClick={() => setIsMenuOpen(v => !v)}
+            >
               <MoreVertical className="w-5 h-5 text-muted-foreground" />
             </button>
-            <div className="absolute right-0 mt-1 hidden group-hover:block w-40 bg-popover border shadow-lg rounded-md z-50">
-              <button
-                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
-                onClick={() => setIsAddOpen(true)}
-              >
-                <Plus className="w-4 h-4" /> Add Lead
-              </button>
-            </div>
+            {isMenuOpen && (
+              <>
+                {/* Invisible overlay to close menu when clicking outside */}
+                <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+                <div className="absolute right-0 mt-1 w-40 bg-popover border shadow-lg rounded-md z-50">
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 text-foreground"
+                    onClick={() => { setIsAddOpen(true); setIsMenuOpen(false); }}
+                  >
+                    <Plus className="w-4 h-4" /> Add Lead
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -325,6 +380,9 @@ export default function LeadsPage() {
         data={leads}
         keyExtractor={(row) => row.id}
         selectable
+        selectedIds={selectedIds}
+        onSelectChange={handleSelectChange}
+        onSelectAll={handleSelectAll}
         onRowClick={handleRowClick}
       />
 
@@ -446,15 +504,32 @@ export default function LeadsPage() {
                 <div className="font-medium">{selectedLead.businessEntity || "-"}</div>
               </div>
               <div>
-                <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">Score</div>
-                <div className="w-full max-w-[100px] mt-1">
-                  <div className="w-full bg-muted rounded-full h-1.5">
-                    <div
-                      className={cn("h-1.5 rounded-full", calculateScoreProgressColor(selectedLead.leadScore))}
-                      style={{ width: `${selectedLead.leadScore}%` }}
-                    />
-                  </div>
-                  <div className="text-right text-xs mt-0.5">{selectedLead.leadScore}/100</div>
+                <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">Lead Score</div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    defaultValue={selectedLead.leadScore}
+                    className="w-20 p-1.5 border rounded-md text-sm text-center font-bold"
+                    onBlur={async (e) => {
+                      const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+                      await fetch(`/api/leads/${selectedLead.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ leadScore: val }),
+                      });
+                      handleRowClick(selectedLead);
+                      fetchLeads();
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground">/ 100 — qualification score (0 = cold, 100 = hot)</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-1.5 mt-2">
+                  <div
+                    className={cn("h-1.5 rounded-full", calculateScoreProgressColor(selectedLead.leadScore))}
+                    style={{ width: `${selectedLead.leadScore}%` }}
+                  />
                 </div>
               </div>
             </div>
@@ -496,12 +571,14 @@ export default function LeadsPage() {
                     className="w-full p-2 border rounded-md text-sm mt-1 bg-background"
                     value={selectedLead.stage}
                     onChange={(e) => handleUpdateStage(e.target.value)}
+                    disabled={selectedLead.stage === 'CONVERTED' || selectedLead.stage === 'LOST'}
                   >
                     <option value="NEW">New</option>
                     <option value="CONTACTED">Contacted</option>
                     <option value="QUALIFIED">Qualified</option>
-                    <option value="CONVERTED">Converted</option>
-                    <option value="LOST">Lost</option>
+                    {/* Show current stage as read-only label if already terminal */}
+                    {selectedLead.stage === 'CONVERTED' && <option value="CONVERTED" disabled>Converted (via Convert button)</option>}
+                    {selectedLead.stage === 'LOST' && <option value="LOST" disabled>Lost (use Mark as Lost button)</option>}
                   </select>
                 </div>
               </div>
@@ -618,11 +695,29 @@ export default function LeadsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">GST Number</label>
-                <input name="gstNumber" className="w-full p-2 border rounded-md text-sm" />
+                <input
+                  name="gstNumber"
+                  placeholder="22AAAAA0000A1Z5"
+                  maxLength={15}
+                  pattern="^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$"
+                  title="Enter valid GST number (e.g. 22AAAAA0000A1Z5)"
+                  className="w-full p-2 border rounded-md text-sm uppercase"
+                  onChange={(e) => { e.target.value = e.target.value.toUpperCase(); }}
+                />
+                <p className="text-xs text-muted-foreground mt-0.5">15 characters — e.g. 22AAAAA0000A1Z5</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">PAN Number</label>
-                <input name="panNumber" className="w-full p-2 border rounded-md text-sm" />
+                <input
+                  name="panNumber"
+                  placeholder="AAAAA9999A"
+                  maxLength={10}
+                  pattern="^[A-Z]{5}[0-9]{4}[A-Z]{1}$"
+                  title="Enter valid PAN number (e.g. ABCDE1234F)"
+                  className="w-full p-2 border rounded-md text-sm uppercase"
+                  onChange={(e) => { e.target.value = e.target.value.toUpperCase(); }}
+                />
+                <p className="text-xs text-muted-foreground mt-0.5">10 characters — e.g. ABCDE1234F</p>
               </div>
             </div>
             <div>
