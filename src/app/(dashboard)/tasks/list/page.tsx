@@ -10,6 +10,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { SlideOver } from "@/components/ui/slide-over";
 import { StatsCard } from "@/components/ui/stats-card";
+import { ConfirmByTyping } from "@/components/ui/confirm-by-typing";
+import { useSession } from "next-auth/react";
 import {
   ClipboardList, PauseCircle, Timer, Upload, RefreshCw, AlarmClock, CheckCircle2, XCircle,
   Plus, Calendar, MoreVertical, CheckSquare, ListTodo
@@ -32,6 +34,10 @@ const STATUS_CARDS = [
 ];
 
 export default function TasksListPage() {
+  const { data: session } = useSession();
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  const [taskToCancel, setTaskToCancel] = useState<any>(null);
+
   const pathname = usePathname();
   const [tasks, setTasks] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
@@ -421,8 +427,20 @@ export default function TasksListPage() {
                   <button onClick={() => handleUpdateStatus('IN_PROGRESS')} className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium">Mark In Progress</button>
                 )}
 
-                <button onClick={() => handleUpdateStatus('OVERDUE')} className="px-4 py-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-sm font-medium">Mark Overdue</button>
-                <button onClick={() => handleUpdateStatus('CANCELLED')} className="px-4 py-2 border hover:bg-muted rounded-md text-sm font-medium">Cancel Task</button>
+                {!['OVERDUE', 'COMPLETED', 'CANCELLED'].includes(selectedTask.status) && (
+                  <button onClick={() => handleUpdateStatus('OVERDUE')} className="px-4 py-2 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-sm font-medium">Mark Overdue</button>
+                )}
+                {selectedTask.status === 'OVERDUE' && (
+                  <button onClick={() => handleUpdateStatus('IN_PROGRESS')} className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium">Resume — Mark In Progress</button>
+                )}
+                {!['COMPLETED', 'CANCELLED'].includes(selectedTask.status) && (
+                  <button
+                    onClick={() => { setTaskToCancel(selectedTask); setIsCancelConfirmOpen(true); }}
+                    className="px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Cancel Task
+                  </button>
+                )}
               </div>
             </div>
 
@@ -479,6 +497,26 @@ export default function TasksListPage() {
           </div>
         )}
       </SlideOver>
+
+      <ConfirmByTyping
+        open={isCancelConfirmOpen}
+        onClose={() => { setIsCancelConfirmOpen(false); setTaskToCancel(null); }}
+        onConfirm={async () => {
+          if (!taskToCancel) return;
+          await fetch(`/api/tasks/${taskToCancel.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'CANCELLED' }),
+          });
+          setIsDetailOpen(false);
+          fetchTasks();
+          fetchStats();
+        }}
+        title="Cancel Task"
+        description={`This will cancel task #TSK${String(taskToCancel?.taskNumber || 0).padStart(5, '0')}. This action cannot be undone.`}
+        confirmName={session?.user?.name || "Admin"}
+        actionLabel="Yes, Cancel Task"
+      />
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { SlideOver } from "@/components/ui/slide-over";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmByTyping } from "@/components/ui/confirm-by-typing";
+import { useSession } from "next-auth/react";
 import {
   Clock, CheckCircle, UserX, Users, Percent,
   MoreVertical, Filter, AlignJustify, Plus
@@ -15,6 +17,9 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 export default function LeadsPage() {
+  const { data: session } = useSession();
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
   const [leads, setLeads] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -116,10 +121,9 @@ export default function LeadsPage() {
 
   const handleDeleteLead = async () => {
     if (!selectedLead) return;
-    if (!confirm("Are you sure you want to delete this lead?")) return;
-
     await fetch(`/api/leads/${selectedLead.id}`, { method: "DELETE" });
     setIsDetailOpen(false);
+    setIsDeleteConfirmOpen(false);
     fetchLeads();
   };
 
@@ -550,7 +554,7 @@ export default function LeadsPage() {
                 </button>
               )}
               <button
-                onClick={handleDeleteLead}
+                onClick={() => setIsDeleteConfirmOpen(true)}
                 className="w-full py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-sm font-medium transition-colors mt-4"
               >
                 Delete Lead
@@ -628,6 +632,16 @@ export default function LeadsPage() {
           </form>
         )}
       </Modal>
+
+      <ConfirmByTyping
+        open={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteLead}
+        title="Delete Lead"
+        description={`Permanently delete "${selectedLead?.businessName}"? All lead data will be lost.`}
+        confirmName={session?.user?.name || "Admin"}
+        actionLabel="Yes, Delete Lead"
+      />
     </div>
   );
 }

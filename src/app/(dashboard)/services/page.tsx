@@ -7,6 +7,8 @@ import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { SlideOver } from "@/components/ui/slide-over";
+import { ConfirmByTyping } from "@/components/ui/confirm-by-typing";
+import { useSession } from "next-auth/react";
 import { Lock, MoreVertical, Plus, Trash2, Edit, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +30,10 @@ const FREQUENCIES = [
 ];
 
 export default function ServicesPage() {
+  const { data: session } = useSession();
+  const [isDeleteServiceOpen, setIsDeleteServiceOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<any>(null);
+
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -97,7 +103,6 @@ export default function ServicesPage() {
   };
 
   const handleDeleteService = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this service?")) return;
     await fetch(`/api/services/${id}`, { method: "DELETE" });
     fetchServices();
   };
@@ -219,7 +224,7 @@ export default function ServicesPage() {
               {!row.isLocked && (
                 <button
                   className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                  onClick={() => handleDeleteService(row.id)}
+                    onClick={() => { setServiceToDelete(row); setIsDeleteServiceOpen(true); }}
                 >
                   Delete
                 </button>
@@ -437,6 +442,20 @@ export default function ServicesPage() {
           </div>
         </div>
       </SlideOver>
+
+      <ConfirmByTyping
+        open={isDeleteServiceOpen}
+        onClose={() => { setIsDeleteServiceOpen(false); setServiceToDelete(null); }}
+        onConfirm={async () => {
+          if (!serviceToDelete) return;
+          await fetch(`/api/services/${serviceToDelete.id}`, { method: 'DELETE' });
+          fetchServices();
+        }}
+        title="Delete Service"
+        description={`Permanently delete "${serviceToDelete?.name}"? This cannot be undone.`}
+        confirmName={session?.user?.name || "Admin"}
+        actionLabel="Yes, Delete Service"
+      />
     </div>
   );
 }
