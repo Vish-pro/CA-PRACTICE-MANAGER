@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SearchInput } from "@/components/ui/search-input";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { Avatar } from "@/components/ui/avatar";
+import { SlideOver } from "@/components/ui/slide-over";
 import { Users, UserPlus, UserCheck, UserSearch, MoreVertical, Plus } from "lucide-react";
 
 export default function ClientsPage() {
@@ -13,6 +14,15 @@ export default function ClientsPage() {
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/users').then(r => r.json()).then(d => setStaff(d.data || []));
+    fetch('/api/groups').then(r => r.json()).then(d => setGroups(d.data || []));
+  }, []);
 
   useEffect(() => {
     fetchClients();
@@ -35,6 +45,34 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const data = new FormData(form);
+    const labels = (data.get("labels") as string || "").trim();
+
+    await fetch("/api/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        businessName: data.get("businessName"),
+        legalName: data.get("legalName"),
+        businessEntity: data.get("businessEntity"),
+        contactName: data.get("contactName"),
+        contactEmail: data.get("contactEmail"),
+        mobile: data.get("mobile"),
+        gstNumber: data.get("gstNumber"),
+        panNumber: data.get("panNumber"),
+        address: data.get("address"),
+        auditorId: data.get("auditorId") || null,
+        groupId: data.get("groupId") || null,
+        labels: labels || null,
+      }),
+    });
+    setIsAddOpen(false);
+    fetchClients();
   };
 
   const handleRowClick = (row: any) => {
@@ -180,9 +218,10 @@ export default function ClientsPage() {
             </button>
             <div className="absolute right-0 mt-1 hidden group-hover:block w-40 bg-popover border shadow-lg rounded-md z-50">
               <button
-                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 text-muted-foreground"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
+                onClick={() => setIsAddOpen(true)}
               >
-                <Plus className="w-4 h-4" /> Add Client (via Lead)
+                <Plus className="w-4 h-4" /> Add Client
               </button>
               <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted">Export CSV</button>
             </div>
@@ -197,6 +236,104 @@ export default function ClientsPage() {
         selectable
         onRowClick={handleRowClick}
       />
+
+      <SlideOver open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add Client">
+        <form id="add-client-form" onSubmit={handleAddClient} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Business Name <span className="text-red-500">*</span></label>
+            <input name="businessName" required className="w-full p-2 border rounded-md text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Legal Name</label>
+            <input name="legalName" className="w-full p-2 border rounded-md text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Business Entity <span className="text-red-500">*</span></label>
+            <select name="businessEntity" required className="w-full p-2 border rounded-md text-sm">
+              <option value="">Select...</option>
+              <option value="Public Limited">Public Limited</option>
+              <option value="Private Limited">Private Limited</option>
+              <option value="Partnership">Partnership Firm</option>
+              <option value="LLP">LLP</option>
+              <option value="Proprietorship">Proprietorship</option>
+              <option value="Trust">Trust</option>
+              <option value="HUF">HUF</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Contact Name</label>
+              <input name="contactName" className="w-full p-2 border rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Mobile</label>
+              <input type="tel" name="mobile" className="w-full p-2 border rounded-md text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Contact Email</label>
+            <input type="email" name="contactEmail" className="w-full p-2 border rounded-md text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">GST Number</label>
+              <input
+                name="gstNumber"
+                placeholder="22AAAAA0000A1Z5"
+                maxLength={15}
+                pattern="^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$"
+                title="Enter valid GST number (e.g. 22AAAAA0000A1Z5)"
+                className="w-full p-2 border rounded-md text-sm uppercase"
+                onChange={(e) => { e.target.value = e.target.value.toUpperCase(); }}
+              />
+              <p className="text-xs text-muted-foreground mt-0.5">15 characters — e.g. 22AAAAA0000A1Z5</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">PAN Number</label>
+              <input
+                name="panNumber"
+                placeholder="AAAAA9999A"
+                maxLength={10}
+                pattern="^[A-Z]{5}[0-9]{4}[A-Z]{1}$"
+                title="Enter valid PAN number (e.g. ABCDE1234F)"
+                className="w-full p-2 border rounded-md text-sm uppercase"
+                onChange={(e) => { e.target.value = e.target.value.toUpperCase(); }}
+              />
+              <p className="text-xs text-muted-foreground mt-0.5">10 characters — e.g. ABCDE1234F</p>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Address</label>
+            <textarea name="address" rows={2} className="w-full p-2 border rounded-md text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Auditor</label>
+            <select name="auditorId" className="w-full p-2 border rounded-md text-sm">
+              <option value="">None</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Group</label>
+            <select name="groupId" className="w-full p-2 border rounded-md text-sm">
+              <option value="">None</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Labels</label>
+            <input name="labels" placeholder="e.g. VIP, Retail" className="w-full p-2 border rounded-md text-sm" />
+          </div>
+        </form>
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" onClick={() => setIsAddOpen(false)} className="px-4 py-2 border rounded-md text-sm font-medium">Cancel</button>
+          <button form="add-client-form" type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium">Add Client</button>
+        </div>
+      </SlideOver>
     </div>
   );
 }
