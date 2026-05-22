@@ -172,6 +172,15 @@ export default function ServicesPage() {
       cell: (row) => row.professionalFee > 0 ? `₹${row.professionalFee.toLocaleString()}` : "-"
     },
     {
+      header: "Assigned Clients",
+      accessorKey: "assignedClients",
+      cell: (row) => (
+        <span className="font-medium text-muted-foreground">
+          {row.assignedClients || 0}
+        </span>
+      )
+    },
+    {
       header: "SOP",
       accessorKey: "hasSOP",
       cell: (row) => (
