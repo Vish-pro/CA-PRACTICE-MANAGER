@@ -17,7 +17,7 @@ export async function GET() {
 
     // ── 1. CONVERSION VELOCITY ──────────────────────────────────────────────
     // Proxy: time from createdAt to updatedAt for CONVERTED leads
-    const convertedLeads = leads.filter(l => l.status === 'CONVERTED');
+    const convertedLeads = leads.filter(l => l.stage === 'CONVERTED');
     const velocities = convertedLeads.map(l => {
       const ms = new Date(l.updatedAt).getTime() - new Date(l.createdAt).getTime();
       return Math.round(ms / (1000 * 60 * 60 * 24)); // days
@@ -42,10 +42,10 @@ export async function GET() {
       return {
         entity,
         won: entityLeads
-          .filter(l => l.status === 'CONVERTED')
+          .filter(l => l.stage === 'CONVERTED')
           .reduce((sum, l) => sum + (l.dealValue || 0), 0),
         pipeline: entityLeads
-          .filter(l => !['CONVERTED', 'LOST'].includes(l.status))
+          .filter(l => !['CONVERTED', 'LOST'].includes(l.stage))
           .reduce((sum, l) => sum + (l.dealValue || 0), 0),
       };
     }).filter(e => e.won > 0 || e.pipeline > 0);
@@ -76,7 +76,7 @@ export async function GET() {
     ];
     const leadScorePerformance = scoreBuckets.map(bucket => {
       const inBucket = leads.filter(l => l.leadScore >= bucket.min && l.leadScore <= bucket.max);
-      const converted = inBucket.filter(l => l.status === 'CONVERTED').length;
+      const converted = inBucket.filter(l => l.stage === 'CONVERTED').length;
       return {
         label: bucket.label,
         total: inBucket.length,
@@ -91,7 +91,7 @@ export async function GET() {
     const sources = [...new Set(leads.map(l => l.source || 'Unknown'))];
     const sourceEffectiveness = sources.map(source => {
       const sourceLeads = leads.filter(l => (l.source || 'Unknown') === source);
-      const converted = sourceLeads.filter(l => l.status === 'CONVERTED').length;
+      const converted = sourceLeads.filter(l => l.stage === 'CONVERTED').length;
       return {
         source,
         total: sourceLeads.length,
@@ -107,7 +107,7 @@ export async function GET() {
     const stageOrder = ['NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED', 'LOST'];
     const funnelData = stageOrder.map(stage => ({
       stage,
-      count: leads.filter(l => l.status === stage).length,
+      count: leads.filter(l => l.stage === stage).length,
     }));
 
     // ── 7. STAFF CONVERSION LEADERBOARD ────────────────────────────────────
@@ -118,7 +118,7 @@ export async function GET() {
         staffMap[l.assignedToId] = { name: l.assignedTo.name || 'Unknown', total: 0, converted: 0 };
       }
       staffMap[l.assignedToId].total++;
-      if (l.status === 'CONVERTED') staffMap[l.assignedToId].converted++;
+      if (l.stage === 'CONVERTED') staffMap[l.assignedToId].converted++;
     });
     const staffLeaderboard = Object.values(staffMap)
       .map(s => ({
@@ -135,7 +135,7 @@ export async function GET() {
       const label = d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
       if (!monthlyMap[key]) monthlyMap[key] = { month: label, newLeads: 0, converted: 0 };
       monthlyMap[key].newLeads++;
-      if (l.status === 'CONVERTED') monthlyMap[key].converted++;
+      if (l.stage === 'CONVERTED') monthlyMap[key].converted++;
     });
     const monthlyTrend = Object.entries(monthlyMap)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -143,13 +143,13 @@ export async function GET() {
 
     // ── SUMMARY KPIs ────────────────────────────────────────────────────────
     const totalLeads = leads.length;
-    const totalConverted = leads.filter(l => l.status === 'CONVERTED').length;
-    const totalLost = leads.filter(l => l.status === 'LOST').length;
+    const totalConverted = leads.filter(l => l.stage === 'CONVERTED').length;
+    const totalLost = leads.filter(l => l.stage === 'LOST').length;
     const totalPipelineValue = leads
-      .filter(l => !['CONVERTED', 'LOST'].includes(l.status))
+      .filter(l => !['CONVERTED', 'LOST'].includes(l.stage))
       .reduce((sum, l) => sum + (l.dealValue || 0), 0);
     const totalWonValue = leads
-      .filter(l => l.status === 'CONVERTED')
+      .filter(l => l.stage === 'CONVERTED')
       .reduce((sum, l) => sum + (l.dealValue || 0), 0);
     const overallConversionRate = totalLeads > 0
       ? Math.round((totalConverted / totalLeads) * 100)
