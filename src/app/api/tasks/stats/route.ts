@@ -10,6 +10,8 @@ export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const now = new Date();
+
     const [
       total,
       pending,
@@ -21,11 +23,41 @@ export async function GET() {
       cancelled
     ] = await Promise.all([
       prisma.task.count(),
-      prisma.task.count({ where: { status: 'PENDING' } }),
-      prisma.task.count({ where: { status: 'IN_PROGRESS' } }),
-      prisma.task.count({ where: { status: 'SENT_FOR_REVIEW' } }),
-      prisma.task.count({ where: { status: 'REQUEST_CHANGES' } }),
-      prisma.task.count({ where: { status: 'OVERDUE' } }),
+      prisma.task.count({
+        where: {
+          status: 'PENDING',
+          OR: [{ dueDate: { gte: now } }, { dueDate: null }]
+        }
+      }),
+      prisma.task.count({
+        where: {
+          status: 'IN_PROGRESS',
+          OR: [{ dueDate: { gte: now } }, { dueDate: null }]
+        }
+      }),
+      prisma.task.count({
+        where: {
+          status: 'SENT_FOR_REVIEW',
+          OR: [{ dueDate: { gte: now } }, { dueDate: null }]
+        }
+      }),
+      prisma.task.count({
+        where: {
+          status: 'REQUEST_CHANGES',
+          OR: [{ dueDate: { gte: now } }, { dueDate: null }]
+        }
+      }),
+      prisma.task.count({
+        where: {
+          OR: [
+            { status: 'OVERDUE' },
+            {
+              status: { notIn: ['COMPLETED', 'CANCELLED'] },
+              dueDate: { lt: now }
+            }
+          ]
+        }
+      }),
       prisma.task.count({ where: { status: 'COMPLETED' } }),
       prisma.task.count({ where: { status: 'CANCELLED' } }),
     ]);
