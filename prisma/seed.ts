@@ -6,6 +6,39 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Starting seed...');
 
+  // 0. Cleanup existing data to avoid constraint/duplicate key violations
+  console.log('Cleaning up existing database records...');
+  await prisma.counter.deleteMany({});
+  await prisma.todoItem.deleteMany({});
+  await prisma.documentMovement.deleteMany({});
+  await prisma.passwordVault.deleteMany({});
+  await prisma.licenseRegister.deleteMany({});
+  await prisma.dSCRegister.deleteMany({});
+  await prisma.sLA.deleteMany({});
+  await prisma.clientRateCard.deleteMany({});
+  await prisma.clientRating.deleteMany({});
+  await prisma.taskFeedback.deleteMany({});
+  await prisma.subtask.deleteMany({});
+  await prisma.invoiceLineItem.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.invoice.deleteMany({});
+  await prisma.billingEntity.deleteMany({});
+  await prisma.document.deleteMany({});
+  await prisma.attendance.deleteMany({});
+  await prisma.leave.deleteMany({});
+  await prisma.reimbursement.deleteMany({});
+  await prisma.chatMessage.deleteMany({});
+  await prisma.task.deleteMany({});
+  await prisma.lead.deleteMany({});
+  await prisma.clientProfile.deleteMany({});
+  await prisma.clientGroup.deleteMany({});
+  await prisma.serviceSOP.deleteMany({});
+  await prisma.service.deleteMany({});
+  await prisma.sOPChecklist.deleteMany({});
+  await prisma.taskTemplate.deleteMany({});
+  await prisma.user.deleteMany({});
+  console.log('Database cleaned.');
+
   // 1. Create Users
   const passwordHash = await bcrypt.hash('password123', 10);
 
