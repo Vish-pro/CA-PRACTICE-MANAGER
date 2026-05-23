@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { SlideOver } from "@/components/ui/slide-over";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmByTyping } from "@/components/ui/confirm-by-typing";
+import { ConfirmByPassword } from "@/components/ui/confirm-by-password";
 import { useSession } from "next-auth/react";
 import {
   Clock, CheckCircle, UserX, Users, Percent,
@@ -19,6 +20,8 @@ import { format } from "date-fns";
 export default function LeadsPage() {
   const { data: session } = useSession();
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isPasswordConfirmOpen, setIsPasswordConfirmOpen] = useState(false);
+  const [actionToConfirm, setActionToConfirm] = useState<"delete" | "mark_lost" | "convert" | null>(null);
   const [activeStatCard, setActiveStatCard] = useState<string>("ALL");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -136,7 +139,18 @@ export default function LeadsPage() {
     await fetch(`/api/leads/${selectedLead.id}`, { method: "DELETE" });
     setIsDetailOpen(false);
     setIsDeleteConfirmOpen(false);
+    setIsPasswordConfirmOpen(false);
     fetchLeads();
+  };
+
+  const handlePasswordConfirm = () => {
+    if (actionToConfirm === "delete") {
+      handleDeleteLead();
+    } else if (actionToConfirm === "mark_lost") {
+      handleUpdateStage("LOST");
+    } else if (actionToConfirm === "convert") {
+      setIsConvertOpen(true);
+    }
   };
 
   const handleSelectChange = (id: string, selected: boolean) => {
@@ -211,7 +225,12 @@ export default function LeadsPage() {
       cell: (row) => (
         <div className="flex items-center gap-3">
           <Avatar name={row.businessName} size="sm" />
-          <span className="font-bold">{row.businessName}</span>
+          <div className="flex flex-col">
+            <span className="font-bold">{row.businessName}</span>
+            <span className="text-xs text-muted-foreground">
+              (Contact: {row.contactName || '-'} | {row.contactPhone || '-'})
+            </span>
+          </div>
         </div>
       )
     },
@@ -233,6 +252,15 @@ export default function LeadsPage() {
       header: "Contact No",
       accessorKey: "contactPhone",
       cell: (row) => row.contactPhone || "-"
+    },
+    {
+      header: "Assigned User",
+      cell: (row) => row.assignedTo ? (
+        <div className="flex items-center gap-2">
+          <Avatar name={row.assignedTo.name} size="sm" />
+          <span>{row.assignedTo.name}</span>
+        </div>
+      ) : "-"
     },
     {
       header: "Lead Score",
@@ -616,7 +644,10 @@ export default function LeadsPage() {
             <div className="pt-6 mt-6 border-t flex flex-col gap-3">
               {selectedLead.stage !== "CONVERTED" && (
                 <button
-                  onClick={() => setIsConvertOpen(true)}
+                  onClick={() => {
+                    setActionToConfirm("convert");
+                    setIsPasswordConfirmOpen(true);
+                  }}
                   className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"
                 >
                   Convert to Client
@@ -624,14 +655,20 @@ export default function LeadsPage() {
               )}
               {selectedLead.stage !== "LOST" && selectedLead.stage !== "CONVERTED" && (
                 <button
-                  onClick={() => handleUpdateStage("LOST")}
+                  onClick={() => {
+                    setActionToConfirm("mark_lost");
+                    setIsPasswordConfirmOpen(true);
+                  }}
                   className="w-full py-2.5 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-sm font-medium transition-colors"
                 >
                   Mark as Lost
                 </button>
               )}
               <button
-                onClick={() => setIsDeleteConfirmOpen(true)}
+                onClick={() => {
+                  setActionToConfirm("delete");
+                  setIsPasswordConfirmOpen(true);
+                }}
                 className="w-full py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-sm font-medium transition-colors mt-4"
               >
                 Delete Lead
@@ -678,7 +715,7 @@ export default function LeadsPage() {
                 <option value="Partnership">Partnership Firm</option>
                 <option value="LLP">LLP</option>
                 <option value="Proprietorship">Proprietorship</option>
-                <option value="Trust">Trust</option>
+                <option value="Trust">Trust / NGO</option>
                 <option value="HUF">HUF</option>
               </select>
             </div>
@@ -736,6 +773,30 @@ export default function LeadsPage() {
         description={`Permanently delete "${selectedLead?.businessName}"? All lead data will be lost.`}
         confirmName={session?.user?.name || "Admin"}
         actionLabel="Yes, Delete Lead"
+      />
+
+      <ConfirmByPassword
+        open={isPasswordConfirmOpen}
+        onClose={() => setIsPasswordConfirmOpen(false)}
+        onConfirm={handlePasswordConfirm}
+        title={
+          actionToConfirm === "delete" ? "Delete Lead" :
+          actionToConfirm === "mark_lost" ? "Mark Lead as Lost" :
+          "Convert to Client"
+        }
+        description={
+          actionToConfirm === "delete" ? `Permanently delete "${selectedLead?.businessName}"? All lead data will be lost.` :
+          actionToConfirm === "mark_lost" ? `Are you sure you want to mark "${selectedLead?.businessName}" as lost?` :
+          `Are you sure you want to proceed with converting "${selectedLead?.businessName}" to a client?`
+        }
+        actionLabel={
+          actionToConfirm === "delete" ? "Yes, Delete Lead" :
+          actionToConfirm === "mark_lost" ? "Yes, Mark as Lost" :
+          "Proceed to Convert"
+        }
+        actionClassName={
+          actionToConfirm === "convert" ? "bg-green-600 text-white hover:bg-green-700" : undefined
+        }
       />
     </div>
   );
