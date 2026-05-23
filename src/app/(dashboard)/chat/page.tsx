@@ -12,6 +12,18 @@ export default function ChatPage() {
     { id: 4, name: "Mike Ross", type: "direct", status: "offline" },
   ];
 
+  const channels = [];
+  const directMessages = [];
+
+  for (let i = 0; i < users.length; i++) {
+    const u = users[i];
+    if (u.type === 'channel') {
+      channels.push(u);
+    } else if (u.type === 'direct') {
+      directMessages.push(u);
+    }
+  }
+
   return (
     <div className="flex h-[calc(100vh-10rem)] space-x-6">
       {/* Sidebar */}
@@ -28,13 +40,13 @@ export default function ChatPage() {
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           <div className="text-xs font-semibold text-muted-foreground uppercase px-2 py-1.5 mt-2">Channels</div>
-          {users.filter(u => u.type === 'channel').map(u => (
+          {channels.map(u => (
             <Button key={u.id} variant="ghost" className="w-full justify-start font-medium">
               <Users className="w-4 h-4 mr-2 text-muted-foreground" /> {u.name}
             </Button>
           ))}
           <div className="text-xs font-semibold text-muted-foreground uppercase px-2 py-1.5 mt-4">Direct Messages</div>
-          {users.filter(u => u.type === 'direct').map(u => (
+          {directMessages.map(u => (
             <Button key={u.id} variant="ghost" className="w-full justify-start font-normal">
               <span className={`w-2 h-2 rounded-full mr-2 ${u.status === 'online' ? 'bg-green-500' : 'bg-gray-300'}`}></span>
               {u.name}
