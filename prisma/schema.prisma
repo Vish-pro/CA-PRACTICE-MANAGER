@@ -90,6 +90,7 @@ model Task {
   priority    String    @default("MEDIUM")
   dueDate     DateTime?
   completedAt DateTime?
+  statusChangedAt DateTime?   // set whenever the status field changes
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

@@ -125,14 +125,33 @@ export default function ClientsPage() {
     },
     {
       header: "Services",
-      cell: (row) => (
-        <div className="flex -space-x-2">
-          {/* Mocked, in real app would map assigned services */}
-          <Avatar name="GST" size="sm" className="border-2 border-background z-10 bg-orange-500" />
-          <Avatar name="TDS" size="sm" className="border-2 border-background z-20 bg-blue-500" />
-          <div className="w-6 h-6 rounded-full bg-muted border-2 border-background z-30 flex items-center justify-center text-[10px] font-medium">+3</div>
-        </div>
-      )
+      cell: (row: any) => {
+        const services: { id: string; name: string }[] = row.rateCards?.map((rc: { service: { id: string; name: string } | null }) => rc.service).filter(Boolean) || [];
+        if (services.length === 0) return "-";
+
+        const displayServices = services.slice(0, 3);
+        const remaining = services.length - 3;
+        const zClasses = ["z-10", "z-20", "z-30"];
+
+        return (
+          <div className="flex -space-x-2">
+            {displayServices.map((srv, i: number) => (
+              <Avatar
+                key={srv.id}
+                name={srv.name}
+                size="sm"
+                className={`border-2 border-background ${zClasses[i] || 'z-0'}`}
+                title={srv.name}
+              />
+            ))}
+            {remaining > 0 && (
+              <div className="w-6 h-6 rounded-full bg-muted border-2 border-background z-40 flex items-center justify-center text-[10px] font-medium" title={`${remaining} more`}>
+                +{remaining}
+              </div>
+            )}
+          </div>
+        );
+      }
     },
     {
       header: "Employee",

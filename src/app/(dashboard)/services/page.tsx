@@ -296,6 +296,7 @@ export default function ServicesPage() {
         data={services}
         keyExtractor={(row) => row.id}
         selectable
+        className="[&_td]:py-4 [&_th]:py-4"
       />
 
       {/* Add / Edit Service Slide-over */}

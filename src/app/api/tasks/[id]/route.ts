@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/authOptions';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
-const prisma = new PrismaClient();
+
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -50,6 +50,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       dueDate = yesterday;
     }
 
+    // Detect status change to track statusChangedAt accurately
+    const existing = await prisma.task.findUnique({
+      where: { id: resolvedParams.id },
+      select: { status: true },
+    });
+    const statusChanged = body.status !== undefined && existing?.status !== body.status;
+
     const task = await prisma.task.update({
       where: { id: resolvedParams.id },
       data: {
@@ -61,6 +68,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         assignedToId: body.assignedToId,
         reviewerId: body.reviewerId,
         completedAt: body.status === 'COMPLETED' ? new Date() : null,
+        statusChangedAt: statusChanged ? new Date() : undefined,
       }
     });
 

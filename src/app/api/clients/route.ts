@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/authOptions';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+
 
 export async function GET(request: Request) {
   try {
@@ -44,6 +44,7 @@ export async function GET(request: Request) {
         user: { select: { id: true, name: true } },
         group: { select: { id: true, name: true } },
         auditor: { select: { id: true, name: true } },
+        rateCards: { include: { service: true } },
         _count: { select: { tasks: true, invoices: true, documents: true } }
       }
     });
