@@ -1,0 +1,26 @@
+
+> turia-clone@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 519ms
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+○ Compiling / ...
+ GET / 307 in 4.4s (next.js: 4.1s, application-code: 303ms)
+[next-auth][error][NO_SECRET]
+https://next-auth.js.org/errors#no_secret
+[next-auth][error][NO_SECRET]
+https://next-auth.js.org/errors#no_secret
+[next-auth][warn][NEXTAUTH_URL]
+https://next-auth.js.org/warnings#nextauth_url
+[next-auth][warn][NO_SECRET]
+https://next-auth.js.org/warnings#no_secret
+ GET /api/auth/error?error=Configuration 500 in 2.1s (next.js: 2.0s, application-code: 51ms)
+  Reload env: .env
+ GET /login?from=%2Ftasks%2Ftracker 200 in 995ms (next.js: 773ms, proxy.ts: 6ms, application-code: 216ms)
+ GET /login?from=%2Fclients 200 in 82ms (next.js: 6ms, proxy.ts: 9ms, application-code: 68ms)
+ GET /api/auth/session 200 in 339ms (next.js: 285ms, application-code: 54ms)
+ GET /api/auth/csrf 200 in 15ms (next.js: 5ms, application-code: 10ms)

@@ -11,6 +11,8 @@ import { ConfirmByTyping } from "@/components/ui/confirm-by-typing";
 import { useSession } from "next-auth/react";
 import { Lock, MoreVertical, Plus, Trash2, Edit, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Papa from "papaparse";
+import toast from "react-hot-toast";
 
 const CATEGORIES = [
   "All",
@@ -72,6 +74,91 @@ export default function ServicesPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExportCSV = () => {
+    const csvData = services.map(s => ({
+      "Name": s.name || "",
+      "Category": s.category || "",
+      "Frequency": s.frequency || "",
+      "Professional Fee": s.professionalFee || 0,
+      "Description": s.description || "",
+      "Active": s.isActive ? "Yes" : "No",
+      "Locked": s.isLocked ? "Yes" : "No"
+    }));
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "services_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const rows = results.data as any[];
+        if (rows.length === 0) {
+          toast.error("CSV file is empty");
+          return;
+        }
+
+        const loadingToast = toast.loading(`Importing ${rows.length} services...`);
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const row of rows) {
+          try {
+            const body = {
+              name: row["Name"] || row["name"] || "",
+              category: row["Category"] || row["category"] || "Other",
+              frequency: row["Frequency"] || row["frequency"] || "One-time",
+              professionalFee: parseFloat(row["Professional Fee"] || row["professionalFee"] || "0"),
+              description: row["Description"] || row["description"] || "",
+              isActive: (row["Active"] || row["isActive"] || "Yes").toLowerCase() === "yes",
+            };
+
+            if (!body.name) {
+              errorCount++;
+              continue;
+            }
+
+            const res = await fetch("/api/services", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+
+            if (res.ok) successCount++;
+            else errorCount++;
+          } catch (err) {
+            errorCount++;
+          }
+        }
+
+        toast.dismiss(loadingToast);
+        if (successCount > 0) {
+          toast.success(`Successfully imported ${successCount} services.`);
+        }
+        if (errorCount > 0) {
+          toast.error(`Failed to import ${errorCount} rows.`);
+        }
+        fetchServices();
+      },
+      error: (error) => {
+        toast.error(`Error parsing CSV: ${error.message}`);
+      }
+    });
+
+    e.target.value = '';
   };
 
   const handleSaveService = async (e: React.FormEvent) => {
@@ -272,8 +359,11 @@ export default function ServicesPage() {
               >
                 <Plus className="w-4 h-4" /> Add Service
               </button>
-              <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted">Import</button>
-              <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted">Export CSV</button>
+              <label className="w-full text-left px-3 py-2 text-sm hover:bg-muted cursor-pointer block">
+                Import CSV
+                <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
+              </label>
+              <button onClick={handleExportCSV} className="w-full text-left px-3 py-2 text-sm hover:bg-muted">Export CSV</button>
             </div>
           </div>
         </div>

@@ -24,6 +24,11 @@ export default function ClientDetailPage() {
   const [assigningService, setAssigningService] = useState({ serviceId: "", customPrice: "" });
   const [servicesLoading, setServicesLoading] = useState(false);
 
+  // Edit Client State
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+
   const tabs = [
     "Overview", "Tasks", "Services", "Documents", "DSC", "Licenses", "Passwords", "Invoices", "Notes"
   ];
@@ -68,7 +73,37 @@ export default function ClientDetailPage() {
 
   useEffect(() => {
     fetchClient();
+    fetch('/api/users').then(r => r.json()).then(d => setStaff(d.data || []));
+    fetch('/api/groups').then(r => r.json()).then(d => setGroups(d.data || []));
   }, [id]);
+
+  const handleEditClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const data = new FormData(form);
+    const labels = (data.get("labels") as string || "").trim();
+
+    await fetch(`/api/clients/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        companyName: data.get("companyName"),
+        legalName: data.get("legalName"),
+        businessEntity: data.get("businessEntity"),
+        contactName: data.get("contactName"),
+        contactEmail: data.get("contactEmail"),
+        mobile: data.get("mobile"),
+        gstNumber: data.get("gstNumber"),
+        panNumber: data.get("panNumber"),
+        address: data.get("address"),
+        auditorId: data.get("auditorId") || null,
+        groupId: data.get("groupId") || null,
+        labels: labels || null,
+      }),
+    });
+    setIsEditOpen(false);
+    fetchClient();
+  };
 
   useEffect(() => {
     if (activeTab === "Services") {
@@ -228,7 +263,10 @@ export default function ClientDetailPage() {
           )}
         </div>
 
-        <button className="w-full py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm">
+        <button
+          onClick={() => setIsEditOpen(true)}
+          className="w-full py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+        >
           Edit Client
         </button>
       </div>
@@ -407,6 +445,103 @@ export default function ClientDetailPage() {
             </button>
           </div>
         </form>
+      </SlideOver>
+      <SlideOver open={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Client">
+        {client && (
+          <form id="edit-client-form" onSubmit={handleEditClient} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Business Name <span className="text-red-500">*</span></label>
+              <input name="companyName" defaultValue={client.companyName} required className="w-full p-2 border rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Legal Name</label>
+              <input name="legalName" defaultValue={client.legalName || ""} className="w-full p-2 border rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Business Entity <span className="text-red-500">*</span></label>
+              <select name="businessEntity" defaultValue={client.businessEntity || ""} required className="w-full p-2 border rounded-md text-sm">
+                <option value="">Select...</option>
+                <option value="Public Limited">Public Limited</option>
+                <option value="Private Limited">Private Limited</option>
+                <option value="Partnership">Partnership Firm</option>
+                <option value="LLP">LLP</option>
+                <option value="Proprietorship">Proprietorship</option>
+                <option value="Trust">Trust</option>
+                <option value="HUF">HUF</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Contact Name</label>
+                <input name="contactName" defaultValue={client.contactName || ""} className="w-full p-2 border rounded-md text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Mobile</label>
+                <input type="tel" name="mobile" defaultValue={client.mobile || ""} className="w-full p-2 border rounded-md text-sm" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Contact Email</label>
+              <input type="email" name="contactEmail" defaultValue={client.contactEmail || ""} className="w-full p-2 border rounded-md text-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">GST Number</label>
+                <input
+                  name="gstNumber"
+                  defaultValue={client.gstNumber || ""}
+                  placeholder="22AAAAA0000A1Z5"
+                  maxLength={15}
+                  pattern="^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$"
+                  title="Enter valid GST number (e.g. 22AAAAA0000A1Z5)"
+                  className="w-full p-2 border rounded-md text-sm uppercase"
+                  onChange={(e) => { e.target.value = e.target.value.toUpperCase(); }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">PAN Number</label>
+                <input
+                  name="panNumber"
+                  defaultValue={client.panNumber || ""}
+                  placeholder="AAAAA9999A"
+                  maxLength={10}
+                  pattern="^[A-Z]{5}[0-9]{4}[A-Z]{1}$"
+                  title="Enter valid PAN number (e.g. ABCDE1234F)"
+                  className="w-full p-2 border rounded-md text-sm uppercase"
+                  onChange={(e) => { e.target.value = e.target.value.toUpperCase(); }}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Address</label>
+              <textarea name="address" defaultValue={client.address || ""} rows={2} className="w-full p-2 border rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Auditor</label>
+              <select name="auditorId" defaultValue={client.auditorId || ""} className="w-full p-2 border rounded-md text-sm">
+                <option value="">Select...</option>
+                {staff.filter(u => u.role === 'ADMIN' || u.role === 'SENIOR_STAFF').map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Group</label>
+              <select name="groupId" defaultValue={client.groupId || ""} className="w-full p-2 border rounded-md text-sm">
+                <option value="">None</option>
+                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Labels <span className="text-xs text-muted-foreground">(comma-separated)</span></label>
+              <input name="labels" defaultValue={client.labels || ""} placeholder="VIP, Tech, Priority" className="w-full p-2 border rounded-md text-sm" />
+            </div>
+          </form>
+        )}
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" onClick={() => setIsEditOpen(false)} className="px-4 py-2 border rounded-md text-sm font-medium">Cancel</button>
+          <button form="edit-client-form" type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium">Save Changes</button>
+        </div>
       </SlideOver>
     </div>
   );

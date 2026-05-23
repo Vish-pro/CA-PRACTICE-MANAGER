@@ -7,6 +7,8 @@ import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { Avatar } from "@/components/ui/avatar";
 import { SlideOver } from "@/components/ui/slide-over";
 import { Users, UserPlus, UserCheck, UserSearch, MoreVertical, Plus } from "lucide-react";
+import Papa from "papaparse";
+import toast from "react-hot-toast";
 
 export default function ClientsPage() {
   const router = useRouter();
@@ -48,6 +50,98 @@ export default function ClientsPage() {
 
   const handleRowClick = (row: any) => {
     router.push(`/clients/${row.id}`);
+  };
+
+  const handleExportCSV = () => {
+    const csvData = clients.map(c => ({
+      "Business Name": c.companyName || "",
+      "Legal Name": c.legalName || "",
+      "Business Entity": c.businessEntity || "",
+      "Contact Person": c.contactName || "",
+      "Contact Email": c.contactEmail || "",
+      "Mobile": c.mobile || "",
+      "GST Number": c.gstNumber || "",
+      "PAN Number": c.panNumber || "",
+      "Address": c.address || "",
+      "Labels": c.labels || ""
+    }));
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "clients_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const rows = results.data as any[];
+        if (rows.length === 0) {
+          toast.error("CSV file is empty");
+          return;
+        }
+
+        const loadingToast = toast.loading(`Importing ${rows.length} clients...`);
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const row of rows) {
+          try {
+            const body = {
+              businessName: row["Business Name"] || row["companyName"] || "",
+              legalName: row["Legal Name"] || row["legalName"] || "",
+              businessEntity: row["Business Entity"] || row["businessEntity"] || "",
+              contactName: row["Contact Person"] || row["contactName"] || "",
+              contactEmail: row["Contact Email"] || row["contactEmail"] || "",
+              mobile: row["Mobile"] || row["mobile"] || "",
+              gstNumber: row["GST Number"] || row["gstNumber"] || "",
+              panNumber: row["PAN Number"] || row["panNumber"] || "",
+              address: row["Address"] || row["address"] || "",
+              labels: row["Labels"] || row["labels"] || "",
+            };
+
+            if (!body.businessName) {
+              errorCount++;
+              continue;
+            }
+
+            const res = await fetch("/api/clients", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+
+            if (res.ok) successCount++;
+            else errorCount++;
+          } catch (err) {
+            errorCount++;
+          }
+        }
+
+        toast.dismiss(loadingToast);
+        if (successCount > 0) {
+          toast.success(`Successfully imported ${successCount} clients.`);
+        }
+        if (errorCount > 0) {
+          toast.error(`Failed to import ${errorCount} rows.`);
+        }
+        fetchClients();
+      },
+      error: (error) => {
+        toast.error(`Error parsing CSV: ${error.message}`);
+      }
+    });
+
+    e.target.value = ''; // Reset input
   };
 
   const handleAddClient = async (e: React.FormEvent) => {
@@ -98,7 +192,7 @@ export default function ClientsPage() {
       cell: (row) => row.legalName || "-"
     },
     {
-      header: "Contact Name",
+      header: "Contact Person",
       cell: (row) => row.contactName ? (
         <div className="flex items-center gap-2">
           <Avatar name={row.contactName} size="sm" />
@@ -151,13 +245,6 @@ export default function ClientsPage() {
             )}
           </div>
         );
-      }
-    },
-    {
-      header: "Employee",
-      cell: (row) => {
-        // We will just show an avatar if there's assigned user
-        return <Avatar name={row.user?.name || "?"} size="sm" />;
       }
     },
     {
@@ -241,7 +328,11 @@ export default function ClientsPage() {
               >
                 <Plus className="w-4 h-4" /> Add Client
               </button>
-              <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted">Export CSV</button>
+              <label className="w-full text-left px-3 py-2 text-sm hover:bg-muted cursor-pointer block">
+                Import CSV
+                <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
+              </label>
+              <button onClick={handleExportCSV} className="w-full text-left px-3 py-2 text-sm hover:bg-muted">Export CSV</button>
             </div>
           </div>
         </div>
