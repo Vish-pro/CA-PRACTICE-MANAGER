@@ -3,16 +3,39 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Eye, Copy, Lock } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+type PasswordEntry = {
+  id: string;
+  client: string;
+  portal: string;
+  username: string;
+};
 
 export default function PasswordManagerPage() {
-  const [showPwdId, setShowPwdId] = useState<number | null>(null);
+  const [showPwdId, setShowPwdId] = useState<string | null>(null);
+  const [passwords, setPasswords] = useState<PasswordEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const passwords = [
-    { id: 1, client: "Acme Corp", portal: "GST Portal", username: "acme_gst_23" },
-    { id: 2, client: "Acme Corp", portal: "Income Tax", username: "PAN1234567" },
-    { id: 3, client: "TechFlow Inc", portal: "MCA", username: "techflow_mca" },
-  ];
+  useEffect(() => {
+    async function fetchPasswords() {
+      try {
+        const response = await fetch('/api/registers/passwords');
+        if (response.ok) {
+          const data = await response.json();
+          setPasswords(data);
+        } else {
+          console.error("Failed to fetch passwords");
+        }
+      } catch (error) {
+        console.error("Error fetching passwords:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchPasswords();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -24,43 +47,53 @@ export default function PasswordManagerPage() {
         <Button><Plus className="w-4 h-4 mr-2" /> Add Credential</Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {passwords.map(pwd => (
-          <Card key={pwd.id}>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center text-primary font-semibold">
-                  <Lock className="w-5 h-5 mr-2" />
-                  {pwd.portal}
-                </div>
-                <span className="bg-muted px-2 py-0.5 rounded text-xs">{pwd.client}</span>
-              </div>
-
-              <div className="space-y-3 mt-4">
-                <div>
-                  <label className="text-xs text-muted-foreground uppercase font-bold">Username / ID</label>
-                  <div className="flex justify-between items-center bg-muted/30 p-2 rounded mt-1 border">
-                    <span className="text-sm font-medium">{pwd.username}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6"><Copy className="w-3 h-3" /></Button>
+      {isLoading ? (
+        <div className="flex justify-center p-8">
+          <p className="text-muted-foreground">Loading credentials...</p>
+        </div>
+      ) : passwords.length === 0 ? (
+        <div className="flex justify-center p-8 bg-muted/20 rounded-lg border border-dashed">
+          <p className="text-muted-foreground">No credentials found.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {passwords.map(pwd => (
+            <Card key={pwd.id}>
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center text-primary font-semibold">
+                    <Lock className="w-5 h-5 mr-2" />
+                    {pwd.portal}
                   </div>
+                  <span className="bg-muted px-2 py-0.5 rounded text-xs">{pwd.client}</span>
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground uppercase font-bold">Password</label>
-                  <div className="flex justify-between items-center bg-muted/30 p-2 rounded mt-1 border">
-                    <span className="text-sm font-mono tracking-widest">{showPwdId === pwd.id ? "StrongPwd123!" : "••••••••••••"}</span>
-                    <div className="flex space-x-1">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowPwdId(showPwdId === pwd.id ? null : pwd.id)}>
-                        <Eye className="w-3 h-3" />
-                      </Button>
+
+                <div className="space-y-3 mt-4">
+                  <div>
+                    <label className="text-xs text-muted-foreground uppercase font-bold">Username / ID</label>
+                    <div className="flex justify-between items-center bg-muted/30 p-2 rounded mt-1 border">
+                      <span className="text-sm font-medium">{pwd.username}</span>
                       <Button variant="ghost" size="icon" className="h-6 w-6"><Copy className="w-3 h-3" /></Button>
                     </div>
                   </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground uppercase font-bold">Password</label>
+                    <div className="flex justify-between items-center bg-muted/30 p-2 rounded mt-1 border">
+                      <span className="text-sm font-mono tracking-widest">{showPwdId === pwd.id ? "********" : "••••••••••••"}</span>
+                      <div className="flex space-x-1">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowPwdId(showPwdId === pwd.id ? null : pwd.id)}>
+                          <Eye className="w-3 h-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6"><Copy className="w-3 h-3" /></Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
