@@ -1,0 +1,554 @@
+Here is the completely comprehensive master database configuration for all your 56 compliance services.
+No shortcuts have been taken. Every single service has been written out fully with its realistic Average Market Price, a meticulous Step-by-Step SOP Checklist for your internal team, and a high-converting, professional Client-Facing Description with concrete deliverables to copy-paste directly into your system.
+📊 1. Income Tax Services
+ITR-1 (Individual Salary)
+Average Market Price: ₹1,000 – ₹2,500
+Client-Facing Description: > Professional preparation and e-filing of Income Tax Return Form ITR-1 for individuals with income from salary, one house property, other sources (interest, dividends), and total income up to ₹50 Lakhs. Includes verification of tax credits against Form 26AS/AIS/TIS, optimizing deductions under Chapter VI-A, tax regime comparative analysis (Old vs New), and generation of the final ITR-V acknowledgement.Client Deliverables Required: Form 16 from employer, PAN & Aadhaar cards, bank account statements for the financial year, interest certificates from banks, and proof of tax-saving investments.
+SOP Checklist:
+Data Gathering & Ingestion: Collect Form 16, PAN, Aadhaar, and bank statements.
+Tax Credit Verification: Cross-verify tax credits, TDS deductions, and high-value transactions using Form 26AS, AIS, and TIS on the Income Tax portal.
+Computation & Regime Selection: Compute gross total income, analyze tax liability under Old vs New Tax Regimes, and select the most tax-beneficial option.
+Draft Review & Validation: Draft the ITR-1 return, clear schema validation checks on the IT portal, and obtain client confirmation on final tax payable/refundable.
+Filing & E-Verification: Submit the return on the official e-filing portal and complete the Aadhaar OTP or EVC-based e-verification process.
+ITR-2 (Capital Gains)
+Average Market Price: ₹3,500 – ₹7,500
+Client-Facing Description: > Comprehensive preparation and e-filing of ITR-2 for individuals and HUFs who have capital gains from shares, mutual funds, crypto, or real estate, multiple house properties, foreign assets, or unlisted shares. Includes scrip-wise calculation of short-term/long-term capital gains (STCG/LTCG), grandfathering adjustments under Section 112A, set-off/carry-forward of losses, and detailed disclosure of assets and liabilities where applicable.Client Deliverables Required: Capital Gains statements from brokers, property purchase/sale deeds, bank statements, AIS/TIS forms, and global income/asset details if applicable.
+SOP Checklist:
+Broker Statement Processing: Import and clean consolidated capital gains statements from all equity/mutual fund brokers.
+Real Estate Indexation: Compute cost inflation indexation adjustments for any immovable property transactions using valid registry deeds.
+Loss Set-off Optimization: Map and execute standard intra-head and inter-head loss set-offs, scheduling carry-forward losses accurately.
+Schedule FA & AL Completion: Fill out Schedule Foreign Assets (FA) and Schedule Asset & Liabilities (AL) if net income crosses ₹50 Lakhs.
+Portal Validation & Submission: Upload the XML/JSON schema, handle portal-side validation warnings, and execute final submission and verification.
+ITR-3 (Business Income)
+Average Market Price: ₹5,000 – ₹15,000
+Client-Facing Description: > End-to-end tax compliance, balance sheet finalization, and filing of ITR-3 for individuals and HUFs operating proprietary businesses or professions, partner firms, or trading in derivatives (F&O/Intraday). Includes processing of trial balances, computing depreciation as per the Income Tax Act, managing adjustments under Section 43B, and filling extensive business schedules.Client Deliverables Required: Trial balance, P&L statement, balance sheet, bank books, ledger accounts, Form 26AS/AIS, and tax audit report (if applicable).
+SOP Checklist:
+Trial Balance Finalization: Review and reconcile client books of accounts, ledger entries, and bank statements.
+Tax Adjustment Mapping: Calculate income tax depreciation schedules, disallowances under Section 40A(3), and provisions under 43B.
+F&O/Intraday Trading Reconciliation: Compute absolute turnover for F&O/Intraday trades and map corresponding business expenses.
+Schedule Drafting: Populate extensive balance sheet and P&L schedules within the specialized ITR-3 software utility.
+Audit Sync & Upload: Ensure numbers perfectly tie back to the Tax Audit Report (if applicable), upload the payload, and e-verify.
+ITR-4 (Presumptive Income)
+Average Market Price: ₹2,500 – ₹5,000
+Client-Facing Description: > Streamlined tax filing under the Presumptive Taxation Scheme (Sections 44AD, 44ADA, or 44AE) using Form ITR-4 (Sugam). Designed for small businesses, retail traders, and professionals (doctors, engineers, consultants) looking to declare profits at specified percentages of gross turnover without maintaining extensive books of accounts.Client Deliverables Required: Total gross turnover or receipts data, bank statements, digital transaction summaries, PAN, Aadhaar, and AIS/TIS profile.
+SOP Checklist:
+Turnover Segregation: Review bank statements and cash receipts to segregate digital vs cash turnover for Section 44AD/44ADA calculations.
+Presumptive Profit Computation: Apply statutory profit percentages (6% digital turnover, 8% cash turnover, or 50% for professional receipts).
+Financial Summary Entry: Extract and enter essential portal parameters: Sundry Debtors, Sundry Creditors, Stock-in-hand, and Cash Balance.
+Portal Cross-Match: Verify that declared gross receipts are not lower than those reported in Form 26AS (TDS Sec 194C/194J) or AIS.
+Filing & Closure: Upload the generated return schema, clear mandatory data alerts, and e-verify via Aadhaar OTP.
+ITR-5 (Partnership)
+Average Market Price: ₹4,500 – ₹10,000
+Client-Facing Description: > Statutory income tax filing using Form ITR-5 for Partnership Firms, Limited Liability Partnerships (LLPs), Association of Persons (AOPs), and Body of Individuals (BOIs). Covers corporate calculation of partner salary, interest on capital allowed as per partnership deeds, book profit adjustments under Section 40(b), and firm-level tax computations.Client Deliverables Required: Audited/Finalized financial statements, Partnership Deed, partners' capital account ledgers, PAN of the firm, and PAN of all partners.
+SOP Checklist:
+Deed Verification: Review the partnership deed to confirm maximum caps allowed for partner salary and interest on capital.
+Section 40(b) Computation: Run statutory book profit calculations to determine admissible vs inadmissible partner remunerations.
+Partner Schedule Tagging: Input individual partner details, profit-sharing ratios, and capital balance schedules.
+MAT/AMT Calculations: Check applicability of Alternate Minimum Tax (AMT) and fill out Form 29C if applicable.
+DSC Signing & Upload: Upload return JSON file on the portal and sign using the Digital Signature Certificate (DSC) of the Designated/Managing Partner.
+ITR-6 (Company Return)
+Average Market Price: ₹10,000 – ₹30,000
+Client-Facing Description: > Corporate tax return filing through Form ITR-6 for companies registered under the Companies Act, other than companies claiming exemption under Section 11. Includes complex compliance mapping for Minimum Alternate Tax (MAT under Section 115JB), schedule disclosures for Ind-AS/AS compliance, shareholding patterns, and carry-forward corporate losses.Client Deliverables Required: Audited Balance Sheet, P&L Account, Auditor's Report, Tax Audit Report (Form 3CD), MAT calculation worksheets, and DSC of Director.
+SOP Checklist:
+Tax Audit Synchronicity: Map values precisely with the filed Form 3CD to prevent automated portal mismatch notices.
+MAT Schedule Finalization: Calculate Book Profits under Section 115JB, mapping any relevant MAT credit tracking lines.
+Detailed Balance Sheet Entry: Manually populate/upload exhaustive corporate assets, liabilities, and reserves schedules.
+Transactions with Related Parties: Disclose transactions with related parties and tracking lines for unlisted shares/exemptions.
+Mandatory DSC Filing: Upload the encrypted payload and validate the filing strictly using the authorized Director's registered DSC.
+ITR-7 (Trust/NGO)
+Average Market Price: ₹8,000 – ₹20,000
+Client-Facing Description: > Specialized tax filing via Form ITR-7 for charitable/religious trusts, political parties, scientific research associations, and NGOs claiming exemptions under Section 11, 12A, 10(23C). Focuses on monitoring the mandatory 85% application of income, tracking accumulation of funds via Form 10, and verifying corpus donations.Client Deliverables Required: Registration certificate under Sec 12A/12AB/10(23C), Audited financials, Form 10B/10BB Audit Report, tracking details of corpus and non-corpus donations.
+SOP Checklist:
+Application of Income Check: Calculate if the trust applied 85% of its total receipts for charitable/religious purposes during the fiscal year.
+Form 10 Mapping: Ensure any shortfalls in application are legally backed by a filed Form 10 for accumulation of income.
+Donation Breakup Verification: Audit and categorize receipts into Corpus, Direct Donations, and Anonymous Donations (Sec 115BBC).
+Exemption Validation: Match structural claims directly with data submitted in Form 10B / 10BB by the auditor.
+Authorized E-Filing: Submit via the official portal utilizing the Digital Signature Certificate (DSC) of the Principal Officer/Trustee.
+Form 15CA/15CB
+Average Market Price: ₹3,500 – ₹7,500 per transaction
+Client-Facing Description: > Statutory documentation and certifications required for making foreign remittances to non-residents. Covers the preparation of Form 15CA (online declaration by the remitter) and the issuance of Form 15CB (a mandatory Certificate by a practicing Chartered Accountant) validating tax withholding (TDS) under Section 195 and Double Taxation Avoidance Agreements (DTAA).Client Deliverables Required: Foreign invoice, remittance agreement, Form 10F/TRC (Tax Residency Certificate) of non-resident, bank account details, and remitter’s portal access.
+SOP Checklist:
+Withholding Tax Analysis: Evaluate the nature of remittance to check applicability of TDS under Section 195 or DTAA rates.
+TRC Review: Inspect the foreign vendor’s Tax Residency Certificate (TRC) and Form 10F to confirm treaty benefit eligibility.
+15CB Certificate Issuance: Generate and upload the CA Certificate (Form 15CB) using the practicing accountant's portal account.
+UDIN Generation: Generate a unique UDIN on the ICAI portal and map it directly to the uploaded Form 15CB within 15 days.
+15CA Generation: File Part A/B/C/D of Form 15CA on the client portal linking it to the 15CB acknowledgement number.
+Advance Tax Challan
+Average Market Price: ₹500 – ₹1,500 per installment
+Client-Facing Description: > Calculation, structuring, and online generation of Advance Tax Challans (Challan ITNS 280 / Portal Pay-Direct) for taxpayers whose estimated annual tax liability exceeds ₹10,000. Ensures timely payment across the statutory deadlines (June 15, Sep 15, Dec 15, March 15) to completely avoid interest penalties under Sections 234B and 234C.Client Deliverables Required: Periodic income statement summaries, estimated business receipts, structural TDS credits available, and login credentials.
+SOP Checklist:
+Quarterly Income Estimation: Review client's quarterly financial performance and extrapolate estimated annual total income.
+Tax Liability Projection: Compute projected annual income tax liability, adjusting for eligible deductions and TDS credits.
+Installment Calculation: Determine the exact installment amount due (15%, 45%, 75%, or 100% of net projected tax).
+Challan Creation: Generate the advance tax payment order on the updated Income Tax e-filing portal under Minor Head 100.
+Payment Tracking: Guide client through net-banking/Bhim UPI completion and safely archive the paid receipt and BSR/CRN tracker.
+Amendment of PAN
+Average Market Price: ₹500 – ₹1,200
+Client-Facing Description: > End-to-end processing for updating, correcting, or amending details on an existing Permanent Account Number (PAN) card. Covers correcting name spelling mismatches, changes in date of birth, parent’s name updates, photo/signature upgrades, or address modifications across NSDL/UTIITSL databases.Client Deliverables Required: Existing PAN Card, Aadhaar Card with matching records, official Gazette notification (for name change cases), and recent photographs.
+SOP Checklist:
+Mismatch Analysis: Audit documentation to pinpoint the exact spelling/data variances against the central Aadhaar/UIDAI repository.
+Form Fill-up: Draft the online PAN Correction Application form on NSDL/Protean or UTIITSL platforms.
+Checkbox Validation: Mark the specific field checkboxes corresponding to data blocks requiring modification.
+Document Upload/e-KYC: Upload required proofs or execute an instantaneous Aadhaar-based biometrics/OTP e-KYC.
+Tracking: Pay processing charges, obtain the 15-digit acknowledgement track string, and monitor delivery status.
+🛍️ 2. GST (Goods & Services Tax) Services
+Service Name
+Frequency
+Avg Market Price
+Client-Facing Description
+Step-by-Step SOP Checklist
+GSTR-1 (Monthly)
+MONTHLY
+₹1,000 - ₹2,500
+Professional aggregation and filing of monthly outward supplies (sales). Includes uploading B2B invoices, credit/debit notes, B2C summaries, HSN summary summaries, and cross-matching documents against internal sales registers.
+Deliverables: Sales register, e-way bills, e-invoices.
+1. Import sales registers and extract B2B, B2C, HSN datasets.
+2. Reconcile e-invoices and e-way bills with internal books.
+3. Upload JSON to GST portal and check for structural errors.
+4. Generate summaries and seek final client sign-off on tax liabilities.
+5. Authenticate via EVC/DSC and file before the 11th.
+GSTR-1 (Quarterly - QRMP)
+QUARTERLY
+₹1,500 - ₹3,500
+Quarterly sales return compliance for taxpayers opted into the QRMP scheme. Includes monthly population of the Invoice Furnishing Facility (IFF) for B2B transactions and final consolidated reporting of quarterly sales records.
+Deliverables: Quarterly sales register, continuous monthly billing sheets.
+1. Review Month-1 and Month-2 IFF uploads for accuracy.
+2. Consolidate Month-3 sales data along with prior unfiled entries.
+3. Review HSN summaries and document sequences for the quarter.
+4. Generate consolidated quarterly return parameters.
+5. Complete filing before the 13th of the month following the quarter via EVC.
+GSTR-3B (Monthly)
+MONTHLY
+₹1,500 - ₹3,000
+Comprehensive monthly summary return for discharging net GST liabilities. Includes auto-populating sales from GSTR-1, auto-reconciling input tax credit (ITC) from GSTR-2B, offset computations, and cash ledger payments via challan.
+Deliverables: Purchase register, GSTR-1 submitted summary, bank statements.
+1. Fetch live GSTR-2B details to lock down allowable Input Tax Credit.
+2. Run stringent reconciliation between purchase register and GSTR-2B.
+3. Block ineligible/reversed ITC under Rules 37, 38, 42, 43.
+4. Create offset challans for cash liabilities; finalize net banking flow.
+5. Submit and e-verify return prior to the 20th of the month.
+GSTR-3B (QRMP - North India)
+QUARTERLY
+₹2,000 - ₹4,500
+Quarterly summary return and offset validation under the QRMP scheme for businesses in northern/eastern states (Delhi, UP, Haryana, etc.). Manages monthly PMT-06 challans and final quarterly tax offset balances due on the 24th.
+Deliverables: Cash ledger records, quarterly sales and purchase logs.
+1. Verify PMT-06 cash challan credits deposited in Month-1 and Month-2.
+2. Compute cumulative quarterly outward tax liability and eligible ITC.
+3. Run full quarterly purchase matching against stable portal 2B data.
+4. Disdischarge liabilities by adjusting existing cash balances.
+5. File return before the staggered regional due date of the 24th.
+GSTR-3B (QRMP - South India)
+QUARTERLY
+₹2,000 - ₹4,500
+Quarterly summary return and offset validation under the QRMP scheme for businesses in southern/western states (Karnataka, MH, KL, TN, etc.). Manages monthly PMT-06 challans and final quarterly tax offset balances due on the 22nd.
+Deliverables: Regional sales logs, purchase ledgers, payment details.
+1. Verify PMT-06 cash challan credits deposited in Month-1 and Month-2.
+2. Compute cumulative quarterly outward tax liability and eligible ITC.
+3. Run full quarterly purchase matching against stable portal 2B data.
+4. Disdischarge liabilities by adjusting existing cash balances.
+5. File return before the staggered regional due date of the 22nd.
+GSTR-4 (Composition Dealers)
+ANNUAL
+₹2,500 - ₹6,000
+Annual return compliance for taxpayers registered under the GST Composition Scheme. Summarizes quarterly turn-over figures, inward supplies liable to Reverse Charge Mechanism (RCM), and matches cumulative payments made under CMP-08.
+Deliverables: Annual turnover summary, purchasing lists, CMP-08 details.
+1. Consolidate entire financial year's turnover from books.
+2. Reconcile total turnover against the 4 quarters of CMP-08 forms.
+3. Identify and compute liabilities under Reverse Charge (RCM) via 2B.
+4. Verify zero mismatches between internal accounts and filed declarations.
+5. Submit return via portal and authenticate using EVC before April 30th.
+GSTR-5 (Non-resident taxable)
+MONTHLY
+₹4,000 - ₹10,000
+Mandatory monthly tax filing for Non-Resident Taxable Persons (NRTP) making sales in India. Covers detailing inward supplies received, outward sales executed, and processing adjustments against initial advance tax deposits.
+Deliverables: Import documents, local sales registers, passport/visa info.
+1. Log inward import documents (BOE) and clear local purchase lines.
+2. Populate local sales data (B2B and B2C segments) executed in India.
+3. Compute tax liability and check validity of advance tax ledger.
+4. Generate payment challan if liability exceeds original deposits.
+5. Submit return before the 13th via valid Digital Signatures.
+GSTR-5A (OIDAR)
+MONTHLY
+₹10,000 - ₹25,000
+Specialized monthly compliance return for Online Information Database Access and Retrieval (OIDAR) service providers based outside India selling to non-taxable users in India. Manages complex currency and geographic compliance.
+Deliverables: Global sales reports for Indian users, transaction logs.
+1. Extract digital transaction metrics filtering for Indian destination IPs.
+2. Convert foreign currency revenues using mandated SBI reference rates.
+3. Populate required tables capturing consumer-facing non-taxable sales.
+4. Arrange for smooth international payment wire transfers to GST portal.
+5. File via authorized representative credentials using DSC before the 20th.
+GSTR-7 (TDS Return)
+MONTHLY
+₹1,500 - ₹3,000
+Monthly return for government authorities, public entities, or specified companies obligated to deduct GST TDS from vendor payments. Ensures vendor accounts are credited with the correct deducted tax credits.
+Deliverables: Deduction registers, contractor payment milestones.
+1. Gather schedule details of payments made to external suppliers.
+2. Compute tax deductions at source (1% CGST + 1% SGST or 2% IGST).
+3. Upload bulk deductor dataset schema on the central GST portal.
+4. Ensure proper challan settlement for deducted tax components.
+5. Authorize and file return before the 10th to prevent late fee charges.
+GSTR-9 (Annual Return)
+ANNUAL
+₹5,000 - ₹15,000
+Mandatory structural consolidation return for regular taxpayers. Reconciles monthly/quarterly filings (GSTR-1 & 3B) against audited financial books, captures un-reported liabilities, and cleans up prior errors.
+Deliverables: Audited financial books, full set of monthly filed returns.
+1. Extract all GSTR-1, GSTR-3B data along with system GSTR-9 summaries.
+2. Reconcile internal sales and purchase ledgers against portal outputs.
+3. Rectify variations by structuring spill-over adjustments across columns.
+4. Track down real-time discrepancies between GSTR-2B and availed credit.
+5. Finalize the ledger, generate the preview PDF, and sign with DSC.
+GSTR-9C (Reconciliation)
+ANNUAL
+₹7,500 - ₹20,000
+Statutory structural reconciliation statement matching financial variables between the audited Annual Financial Statements and the filed GSTR-9 return. Identifies tax gaps, non-reconciled items, and interest obligations.
+Deliverables: Finalized GSTR-9, Audited Balance Sheet, Trial Balance.
+1. Map gross accounting turnover directly to audited P&L figures.
+2. Pinpoint variances in classification of exemptions, rates, or credits.
+3. Compute additional tax obligations emerging due to reconciliation failure.
+4. Draft detailed professional explanations for outstanding variances.
+5. Complete formal submission alongside structural audit sign-offs.
+GSTR-10 (Final Return)
+ONE_TIME
+₹3,000 - ₹7,000
+Mandatory "Final Return" to be submitted by entities whose GST registration has been cancelled or surrendered. Ensures appropriate tax clearance on remaining stock-in-hand and capital assets.
+Deliverables: Cancellation order date, closing stock inventory values, asset books.
+1. Track official cancellation date via the certified administrative order.
+2. Value closing raw material, semi-finished, and finished stock blocks.
+3. Compute ITC reversals required on stock and capital machinery rules.
+4. Populate the asset and liability schedules inside Form GSTR-10.
+5. Disdischarge tax dues via electronic cash ledger and file within 3 months.
+GSTR-11 (Inward Supplies for UIN)
+MONTHLY
+₹2,000 - ₹5,000
+Special monthly tracking statement filed by embassies, consulates, or UN bodies holding a Unique Identification Number (UIN) to successfully claim refunds on local taxes paid on inward supplies.
+Deliverables: Inward tax invoices with UIN printed, embassy purchase logs.
+1. Collate inward tax purchase invoices received throughout the month.
+2. Ensure UIN is typed and displayed across all vendor documents.
+3. Upload structural details of purchase lines to the GSTR-11 portal.
+4. Verify the automatic compilation of eligible refund credit metrics.
+5. Complete e-filing to smoothly route refund claims to processing cells.
+CMP-08 (Composition Dealers)
+QUARTERLY
+₹750 - ₹1,500
+Quarterly statement for self-assessing tax liabilities under the composition scheme. A simple, rapid statement to compute tax on gross quarterly sales and pay it immediately to the department.
+Deliverables: Gross sales summary for the current quarter.
+1. Calculate cumulative business sales value during the quarter.
+2. Apply designated scheme tax factor (1% for traders/mfg, 6% services).
+3. Review any RCM procurement data feeds visible on portal dashboards.
+4. Generate online challan to fulfill liability metrics.
+5. Execute web submission and clear the ledger line via EVC before the 18th.
+🏢 3. MCA (Ministry of Corporate Affairs) Services
+AOC-4 (Annual Financial Filing)
+Average Market Price: ₹4,000 – ₹10,000
+Client-Facing Description: > Statutory annual filing of a company's financial statements with the Registrar of Companies (RoC) via Form AOC-4. Covers formatting and uploading the Balance Sheet, Profit & Loss Account, Director's Report, Auditor's Report, and Corporate Social Responsibility (CSR) details in the compliance format.Client Deliverables Required: Audited financials, signed Director’s Report with disclosures, Auditor’s Report with CARO (if applicable), and DSCs of Director and Auditor.
+SOP Checklist:
+Document Verification: Verify that the financial statements are signed by two directors and the statutory auditor.
+Board Resolution Extraction: Confirm the date of the Board Meeting and Annual General Meeting (AGM) from corporate minutes.
+Form Drafting: Draft the e-form AOC-4 on the MCA V3 portal, transferring line items from the audited financials.
+Attachment Assembly: Convert the Director’s Report, Auditor's Report, and notes to accounts into PDF formats.
+Pre-scrutiny & Submission: Execute portal pre-scrutiny checks, affix professional and director DSCs, and upload before the due date (30 days from AGM).
+MGT-7 (Annual Return)
+Average Market Price: ₹4,000 – ₹10,000
+Client-Facing Description: > Filing of the Annual Return via Form MGT-7/MGT-7A capturing the operational and structural status of the company at the close of the financial year. Discloses registered office details, principal business activities, shareholding pattern, indebtedness, details of directors/KMPs, and board meeting frequencies.Client Deliverables Required: Shareholding changes list, details of shares transferred during the year, board meeting logs, and registered DSC.
+SOP Checklist:
+Shareholding Pattern Compilation: Check the closing cap table, updating details of shares held by promoters, non-promoters, and institutional bodies.
+Meeting Counting: Review corporate logs to record the dates and attendance details for all Board and General Meetings.
+Indebtedness Valuation: Calculate the closing balance of secured and unsecured loans taken by the company.
+Professional Certification: Arrange for MGT-8 certification by a practicing Company Secretary if the corporate size exceeds thresholds.
+Filing Execution: Upload the completed e-form with attached share transfer logs onto the MCA portal within 60 days of the AGM.
+DIR-3 KYC
+Average Market Price: ₹750 – ₹1,500 per Director
+Client-Facing Description: > Mandatory triennial KYC verification for individuals holding an approved Director Identification Number (DIN). Confirms active personal coordinates (mobile number, email ID, and address) directly in the central MCA registry to prevent DIN deactivation and high static late penalties.Client Deliverables Required: Active DIN, self-attested PAN Card, self-attested Aadhaar Card, unique personal mobile number, unique email ID, and active DSC.
+SOP Checklist:
+DIN Status Check: Verify the client's current DIN status on the MCA portal to ensure it is not deactivated.
+Document Matching: Cross-verify that the spelling of the Director's name and Father's name on the PAN and Aadhaar match the MCA database perfectly.
+Form Selection: Draft the unified DIR-3 KYC Web form (as per the triennial filing rules).
+OTP Authentication: Trigger and enter dual real-time OTP verifications sent to the director's unique mobile and email coordinates.
+Professional Attestation: Affix the digital signature of the director and get the form attested by a practicing professional (CA/CS/CMA) to secure immediate approval.
+ADT-1 (Auditor Appointment)
+Average Market Price: ₹2,000 – ₹4,500
+Client-Facing Description: > Formal notification filed via Form ADT-1 with the Registrar of Companies informing the department of the appointment or reappointment of the statutory auditor of the company, detailing the firm name, registration number, tenure, and date of appointment.Client Deliverables Required: Copy of the structural Board/AGM Resolution, formal written Consent Letter, and Eligibility Certificate from the incoming Auditor.
+SOP Checklist:
+Consent Package Review: Examine the incoming auditor's eligibility certificate to confirm compliance with Section 139 and 141 limits.
+Resolution Drafting: Extract details of the corporate resolution passed at the Board meeting or AGM appointing the auditor.
+E-form Population: Complete Form ADT-1 on the MCA platform, specifying the auditor's tenure (e.g., 1st AGM to 6th AGM).
+Attachment Mapping: Attach the certified true copy of the company resolution along with the auditor’s formal consent.
+Signing & Upload: Execute portal validation checks, affix the managing director's DSC, and submit within 15 days of the meeting.
+INC-20A (Commencement of Business)
+Average Market Price: ₹3,000 – ₹6,000
+Client-Facing Description: > Mandatory initial compliance declaration via Form INC-20A required for newly incorporated companies within 180 days of formation. Validates that every subscriber to the memorandum has paid their agreed share capital value into the company bank account before operations begin.Client Deliverables Required: Company Bank Account Statement showing receipt of subscription money, bank payment vouchers, and sector-specific regulatory approvals (if applicable).
+SOP Checklist:
+Capital Receipt Audit: Verify the company's bank statement to confirm matching credits from each individual promoter subscriber.
+Subscription Tracing: Cross-examine capital credit receipts against the pricing structures agreed upon in the corporate Memorandum of Association (MoA).
+Form Drafting: Complete e-form INC-20A, capturing local bank branches, account details, and credit dates.
+Geo-tagged Photo Capture: Take a geo-tagged photograph of the registered office building displaying the company name board.
+Professional Sign-off: Attach the bank statement proof, sign with the Director's DSC, secure professional certification, and file before the 180-day deadline.
+INC-22 (Registered Office)
+Average Market Price: ₹3,500 – ₹7,000
+Client-Facing Description: > Official notification filed via Form INC-22 to declare or change the registered office address of a company. Ensures that all statutory communication lines with government departments and registries are accurately updated.Client Deliverables Required: Proof of registered office address (electricity/gas/telephone bill not older than 2 months), No Objection Certificate (NOC) from the property owner, and Rent/Lease Agreement.
+SOP Checklist:
+Utility Bill Soundness Check: Ensure utility bills are recent, clear, and display the exact address intended for registry logs.
+NOC Drafting: Prepare a structural No Objection Certificate from the lawful owner allowing corporate operations on the premises.
+Board Resolution Extraction: Record authorization details from the board meeting minutes approving the office shift.
+Form Integration: Fill in the full geographical details and pin codes inside e-form INC-22 on the MCA V3 platform.
+Filing Completion: Attach bills, rent agreements, and NOC; sign with the director's DSC and professional attestation.
+PAS-3 (Allotment of Shares)
+Average Market Price: ₹5,000 – ₹15,000
+Client-Facing Description: > Return of allotment of shares filed via Form PAS-3 whenever a company raises fresh equity capital or allocates shares to investors. Discloses complete details of the allottees, share values, premium amounts, and changes to the company's paid-up capital structure.Client Deliverables Required: List of allottees (Name, Address, PAN, shares allocated), Board/General Meeting resolutions authorizing equity issuance, and valuation report.
+SOP Checklist:
+Resolution Cross-Check: Confirm that the allocation was executed in alignment with Board and Extra-Ordinary General Meeting (EGM) mandates.
+Valuation Report Compliance: Verify that share pricing matches the values determined in the Registered Valuer's Report.
+Allottee List Preparation: Draft the structured allottee excel schema detailing PAN, category, and exact volume numbers allocated.
+Form Synthesis: Populate e-form PAS-3 with capital counts before and after the allotment.
+Filing Validation: Attach resolutions and the allottee list, secure dual digital signatures, and execute the filing within 30 days of allotment.
+SH-7 (Change in Share Capital)
+Average Market Price: ₹6,000 – ₹15,000
+Client-Facing Description: > Statutory application filed via Form SH-7 to notify the Registrar of Companies of an alteration, consolidation, or increase in the authorized share capital of the company, enabling the business to issue fresh shares up to the new limits.Client Deliverables Required: Certified copy of the Ordinary/Special Resolution passed at the EGM, amended copy of the Memorandum of Association (MoA), and notice of the general meeting.
+SOP Checklist:
+EGM Compliance Validation: Verify the notice, minutes, and voting metrics of the general meeting where authorized capital was modified.
+MoA Alteration Review: Draft the updated Capital Clause (Clause V) of the Memorandum of Association to reflect the new ceiling.
+MCA Fee Computation: Calculate the portal-side structural stamp duty fees payable based on the scale of capital expansion.
+Form Synthesis: Populate e-form SH-7 on the MCA system, referencing the corporate event SRN.
+DSC Upload: Attach the altered MoA and resolution, sign using the Director's active DSC, and submit.
+✂️ 4. TDS / TCS Services
+Service Name
+Frequency
+Avg Market Price
+Client-Facing Description
+Step-by-Step SOP Checklist
+24Q (Salary TDS)
+QUARTERLY
+₹1,500 - ₹3,500
+End-to-end preparation and filing of Form 24Q for salary tax compliance. Covers salary computations, Section 192 mappings, challan matching, and FVU file validation.
+Deliverables: Salary statements, PAN records, investment proofs, paid challans.
+1. Import monthly payroll files and map tax brackets.
+2. Fetch and match paid TDS challans via Portal CSI files.
+3. Populate employee PAN records and clear structural errors.
+4. Run data through NSDL FVU utility to clear text validation.
+5. Upload the signed return schema to the IT portal.
+26Q (Non-Salary TDS)
+QUARTERLY
+₹1,500 - ₹3,500
+Quarterly filing of Form 26Q capturing non-salary deductions like professional fees (194J), contract payments (194C), rent (194I), and interest (194A). Ensures vendor credit mapping.
+Deliverables: Expense ledgers, vendor PAN records, challans.
+1. Review expense ledgers to confirm correct TDS section application.
+2. Run low-rate/no-deduction threshold certificate checks.
+3. Reconcile vendor PAN validity to spot 20% penalty rates.
+4. Generate FVU via NSDL software using matching CSI tracks.
+5. Complete filing and hand over confirmation receipts.
+27Q (Foreign TDS)
+QUARTERLY
+₹3,500 - ₹8,000
+Specialized quarterly filing of Form 27Q for tax deducted on payments made to non-residents or foreign companies. Manages DTAA tracking and Section 195 compliance metrics.
+Deliverables: Foreign remittance bills, TRC forms, 15CA/CB logs.
+1. Gather foreign payment receipts and locate corresponding 15CB strings.
+2. Check withholding tax rates against DTAA treaty parameters.
+3. Map non-resident address structures and country tax codes.
+4. Execute FVU data conversion routines avoiding code schema errors.
+5. Submit the return payload on the main income tax dashboard.
+27EQ (TCS Return)
+QUARTERLY
+₹1,500 - ₹3,500
+Quarterly return compliance via Form 27EQ for Tax Collected at Source (TCS) on sales of scrap, minerals, luxury motor vehicles, overseas tour packages, or Section 206C(1H) sales transactions.
+Deliverables: Sale invoices, collection reports, TCS challans.
+1. Parse sales records to isolate transactions crossing TCS thresholds.
+2. Match TCS collection sheets against cash challan deposits.
+3. Enter buyer data pipelines alongside PAN details.
+4. Run the data validation file routine in the NSDL utility.
+5. Upload the payload and distribute receipt outputs.
+26QB (TDS Property)
+ONE_TIME
+₹2,000 - ₹4,500
+Specialized immediate compliance transaction for filing Form 26QB. Handles the 1% TDS deduction required when a resident buys immovable property valued above ₹50 Lakhs (Section 194-IA).
+Deliverables: Sale agreement, buyer/seller PANs, installment details.
+1. Review the absolute property sale consideration schedule.
+2. Verify buyer and seller PAN active registration parameters.
+3. Populate structural form data field rows directly on the portal.
+4. Direct the online generation of the electronic net-banking challan.
+5. Process the challan and extract the Form 16B certificate link.
+26QC (TDS on Rent)
+ONE_TIME
+₹1,500 - ₹3,500
+Form 26QC compliance statement for individuals/HUFs paying monthly house rent exceeding ₹50,000 under Section 194-IB. Manages annual/tenancy-closure 5% tax deduction deposits.
+Deliverables: Rent agreement, landlord PAN card, tenancy dates.
+1. Track cumulative rent metrics across the current financial year.
+2. Validate landlord PAN coordinates to prevent compliance friction.
+3. Draft Form 26QC layout tracking tenancy calendars.
+4. Calculate tax deduction milestones at the 5% statutory mark.
+5. Deposit funds via web portals and retrieve the Form 16C data file.
+💼 5. Employee Provident Fund (PF) & ESI
+PF Return Filing
+Average Market Price: ₹1,000 – ₹2,500 per month
+Client-Facing Description: > Monthly compliance management for Employee Provident Fund (EPF) returns. Covers compiling employee wages, calculating statutory employer and employee contributions (12% each), generating the unified Electronic Challan-cum-Return (ECR) text file, and uploading it to the EPFO Unified Portal.Client Deliverables Required: Monthly attendance and payroll sheet, details of new joinees/exits, gross and basic wage structures, and EPFO employer portal credentials.
+SOP Checklist:
+ECR Data Structuring: Extract and clean payroll data to calculate Basic + DA parameters capped at the ₹15,000 statutory limit.
+Contribution Split Verification: Compute the exact splits for EPF (12%), EPS (8.33%), and EDLI/Admin accounts.
+Text File Generation: Structure and generate the ECR text string file utilizing specific delimiter syntax.
+ECR Error Remediation: Upload to the EPFO employer portal, resolve any data validation/mismatch errors, and generate the contribution challan.
+Challan Fulfillment: Arrange for net-banking payment and secure the formal TRRN receipt document before the 15th of the month.
+PF Registration
+Average Market Price: ₹2,500 – ₹5,000
+Client-Facing Description: > Professional onboarding and legal registration of an establishment under the Employees' Provident Funds and Miscellaneous Provisions Act via the Shram Suvidha portal. Includes obtaining the permanent PF Establishment Code Number.Client Deliverables Required: PAN Card of the entity, Certificate of Incorporation/Partnership Deed, lease deed/utility bill, bank account cancel cheque, and digital signatures of the authorized signatory.
+SOP Checklist:
+Portal Account Creation: Establish an operational corporate profile on the Shram Suvidha or EPFO portals.
+Establishment Profile Mapping: Input organizational details, corporate activity descriptions, and date of employee thresholds crossing 20.
+Document Integration: Upload self-attested corporate identity proofs, ownership documents, and structural employee listing counts.
+Signatory Mapping: Connect the identity and contact points of the designated director/partner.
+DSC Attestation & Filing: Authorize the application using the registered digital signature to secure instant code allocation.
+PF Compliance
+Average Market Price: ₹1,500 – ₹3,500 per month / periodic
+Client-Facing Description: > Comprehensive tracking and administrative health upkeep of your organization’s EPFO account. Covers updating employee profiles, seeding Universal Account Numbers (UAN) with KYC documents, processing member joins/exits, and addressing official show-cause alerts.Client Deliverables Required: New employee PAN, Aadhaar, and bank data, member UAN logs, and portal administrative credentials.
+SOP Checklist:
+UAN Initialization: Generate new UAN markers for incoming staff lines lacking historical tracking numbers.
+Aadhaar Seeding Control: Push online triggers to complete mandatory Aadhaar and demographic data seeding across new nodes.
+Exit Date Entry: Manually record resignation and exit dates for departing staff lines to prevent structural ledger clutter.
+KYC Approval Management: Review and digitally approve employee profile updates through the employer dashboard using the registered DSC.
+Audit Readiness: Maintain regular verification of contribution rates against salary increases to prevent inspection gaps.
+PF Transfer
+Average Market Price: ₹500 – ₹1,500 per request
+Client-Facing Description: > Professional assistance for migrating accumulated Provident Fund balances from a member's previous employment account to their active current employer account. Avoids manual claim rejections and structural tracking drop-outs.Client Deliverables Required: Active UAN, member login credentials, previous and current establishment IDs, and matching bank accounts.
+SOP Checklist:
+Profile Stability Audit: Log into the individual member portal to confirm that name, DOB, and gender fields are consistent across both company nodes.
+Online Transfer Setup: Select the "One Member - One EPF Account (Transfer Request)" module within the portal menu.
+Attestation Route Selection: Elect whether the structural digital claim attestation will be performed by the previous or current employer.
+Form 13 Issuance: Complete the structural parameters of the electronic Form 13 transfer instruction sheet.
+Employer Liaison: Track and remind the selected corporate entity to sign off on the digital claim via their portal dashboard.
+PF Withdrawal
+Average Market Price: ₹1,000 – ₹2,500 per claim
+Client-Facing Description: > Processing of final settlement or partial advance withdrawals from the accumulated PF balance. Covers Form 19 (EPF Settlement), Form 10C/10D (Pension Benefits), and Form 31 (Illness, Marriage, House Construction Advances).Client Deliverables Required: Active UAN linked with Aadhaar, verified bank details present in central records, and clear copy of a cancelled cheque.
+SOP Checklist:
+Service Record Check: Check service duration timelines to evaluate taxability factors (e.g., checking if continuous service is under 5 years).
+Form 15G Integration: Draft and upload Form 15G if service length is brief and withdrawal volume crosses ₹50,000 to completely block TDS.
+Claim Form Launch: Select and fill the appropriate form online (Form 31 for advances, Form 19/10C for full closures).
+Cheque Copy Optimization: Upload a high-resolution, legible image of the cancelled cheque displaying the printed name and account number clearly.
+OTP Submission: Authorize the processing pipeline using the registered Aadhaar OTP and track status until funds credit.
+ESI Return
+Average Market Price: ₹1,000 – ₹2,500 per month
+Client-Facing Description: > Monthly compliance return filing under the Employees' State Insurance (ESI) Act. Covers aggregating gross wages for covered employees (earning up to ₹21,000 per month), computing statutory contributions (3.25% employer, 0.75% employee), and uploading monthly contribution worksheets.Client Deliverables Required: Monthly payroll summary sheets with ESI wage metrics, registration logs, and ESIC portal login profiles.
+SOP Checklist:
+Wage Audit Verification: Isolate and flag employees earning below or up to the ₹21,000 threshold limit for mandatory coverage.
+Contribution Calculation: Compute the respective 3.25% and 0.75% splits based on individual gross earnings blocks.
+Bulk Template Population: Generate and populate the standard ESIC excel contribution template format.
+Portal Validation: Upload the worksheet data, address structural entry mismatches, and verify the contribution statement.
+Challan Settlement: Generate the net payment challan and ensure complete fund transfer via net banking before the 15th.
+ESI Registration
+Average Market Price: ₹2,500 – ₹5,000
+Client-Facing Description: > Statutory registration of a factory or establishment under the Employees' State Insurance Act via the unified portal, granting access to medical and cash benefits for employees.Client Deliverables Required: PAN and registration papers of the entity, address proof, list of employees with joining dates, and bank coordinates.
+SOP Checklist:
+Portal Profile Configuration: Set up the firm's administrative profile under the unified Shram Suvidha/ESIC network dashboard.
+Organizational Parameter Inputs: Enter employee counts, nature of operations, and the exact date the headcount crossed the statutory mark of 10/20.
+Documentation Upload: Attach scanned versions of ownership papers, PAN records, and corporate bank sheets.
+Signatory Verification: Complete the verification profile for the principal director or business owner.
+Affixing DSC & Submission: Authenticate the final payload layout using digital signatures to secure the 17-digit code.
+ESI Compliance
+Average Market Price: ₹1,500 – ₹3,000 per month / periodic
+Client-Facing Description: > Ongoing administrative maintenance of your corporate ESIC portal. Covers registering new employees to issue insurance numbers (Pehchan card details), processing member updates, updating family particulars, and managing local accidental reports.Client Deliverables Required: Bio-data updates of new employees, family photographs, nominee configurations, and operational login tokens.
+SOP Checklist:
+Insurance Number Generation: Input personal profiles for new employees to generate new ESI Insurance Numbers.
+Family Data Entry: Record data streams for dependents, including names, ages, and relationships, to unlock medical clinic treatments.
+Dispendsary Mapping: Select and map local target dispensaries closest to the employee's residence.
+Accident Report Handling: Draft and file Form 12 online within 24 hours if any industrial workplace incident occurs.
+Portal Auditing: Audit account data against employee resignations to deactivate non-active nodes in a timely manner.
+💸 6. Professional Tax & Advance Tax
+Service Name
+Frequency
+Avg Market Price
+Client-Facing Description
+Step-by-Step SOP Checklist
+Professional Tax Return
+ANNUAL
+₹1,500 - ₹3,500
+Statutory annual reconciliation and filing of Professional Tax (PT) returns as per state laws. Covers summarizing monthly employee collections and ensuring complete alignment with state treasury rules.
+Deliverables: Monthly payroll data with state PT slabs, paid PT vouchers.
+1. Collate employee counts across distinct state-mandated income slabs.
+2. Reconcile monthly PT deductions with annual payroll summaries.
+3. Populate state-specific tax portal tables with the aggregated data.
+4. Reconcile paid challans to ensure no outstanding interest balance.
+5. Submit return and archive the receipt for employment compliance audits.
+PT Registration
+ONE_TIME
+₹2,000 - ₹4,000
+Obtaining the Professional Tax Registration Certificate (PTRC) for an establishment. Mandatory for employers to deduct and remit professional tax from employee salaries.
+Deliverables: Incorporation papers, PAN, bank coordinates, director proofs.
+1. Create a secure employer profile on the designated state tax portal.
+2. Enter establishment dates, employee counts, and business categories.
+3. Scrutinize and upload lease deeds, corporate entity PANs, and bank proofs.
+4. Validate forms using authorized signatory PAN/OTP structures.
+5. Track processing stages until the PTRC registration number is issued.
+PT Enrollment Certificate
+ONE_TIME
+₹2,000 - ₹4,000
+Securing the Professional Tax Enrollment Certificate (PTEC). Mandatory for the corporate entity itself, directors, professionals, or sole proprietors to pay their own annual statutory tax.
+Deliverables: Entity PAN, trade licenses, partner/director identity proofs.
+1. Access the commercial tax portal and select the PTEC module.
+2. Input professional classifications (e.g., Company, CA, Merchant).
+3. Upload fundamental corporate identity credentials and address proofs.
+4. Complete verification cycles via authorized mobile nodes.
+5. Download the final PTEC certificate and schedule the annual fee payment.
+Advance Tax Payment
+QUARTERLY
+₹500 - ₹1,500
+End-to-end execution of quarterly advance tax payments via the income tax portal. Involves generating payment scripts under Minor Head 100 and maintaining clean remittance logs.
+Deliverables: Capital estimates, tax ledger snapshots, bank challan copies.
+1. Extract tax computation figures from the calculation module.
+2. Generate the precise advance tax payment order on the IT portal.
+3. Share the direct payment link or net banking gateway with the client.
+4. Confirm successful clearance through e-filing activity logs.
+5. Download, organize, and archive the final CIN/BSR challan receipt.
+Advance Tax Calculation
+QUARTERLY
+₹1,000 - ₹2,500
+Financial modeling to project corporate or individual annual incomes. Estimates capital gains, deductions, and tax liabilities to determine the exact advance tax installments due.
+Deliverables: Tax projection spreadsheets, slab comparisons, liability reports.
+1. Gather comprehensive year-to-date income and expense ledgers.
+2. Project business revenues and capital gain events for remaining quarters.
+3. Compute gross estimated total income and apply structural deductions.
+4. Factor in available TDS credits using live automated AIS reports.
+5. Generate a breakdown report detailing the specific installment amount due.
+Advance Tax Challan
+QUARTERLY
+₹500 - ₹1,000
+Prompt generation of portal payment challans for advance tax installments. Focuses on setting correct data variables (Assessment Year, Major Head 0021, Minor Head 100) to prevent misallocation.
+Deliverables: Unpaid draft challan PDFs, payment instruction sheets.
+1. Access the e-filing portal and select the e-Pay Tax feature.
+2. Verify and input the correct current Assessment Year (AY).
+3. Select the appropriate Tax Applicable head based on ownership structure.
+4. Enter the calculated tax, surcharge, and interest metrics into the fields.
+5. Generate the final CRN/Challan draft sheet for immediate client fulfillment.
+🛠️ 7. Manual & Custom Advisory
+Advisory Services
+Average Market Price: ₹2,500 – ₹7,500 per hour / case
+Client-Facing Description: > Expert professional consultation covering strategic tax planning, transaction structuring, financial analysis, corporate restructuring, and compliance advisory. Deliverables are backed by comprehensive research under Indian direct and indirect tax frameworks to optimize tax efficiency and manage litigation risks.Client Deliverables Required: Detailed case brief, transaction contracts, historical financial records, and specific areas of inquiry.
+SOP Checklist:
+Case Briefing: Review the client's problem statement, transaction drafts, and underlying financial metrics.
+Legal & Regulatory Research: Conduct a thorough analysis of relevant sections, case laws, notifications, and circulars using legal databases.
+Risk & Impact Assessment: Model multiple scenarios to evaluate tax implications, potential exposures, and compliance requirements.
+Opinion Drafting: Prepare a structured technical opinion or advisory report outlining clear conclusions and recommendations.
+Client Review: Present the advisory findings to the client, address outstanding questions, and finalize the report.
+Certification Work
+Average Market Price: ₹3,000 – ₹7,500 per certificate
+Client-Facing Description: > Issuance of statutory and financial certificates required by banks, financial institutions, government bodies, or regulators. Includes net worth certifications, turn-over certifications, fund utilization tracking verification, and financial ratio certification signed by a practicing professional.Client Deliverables Required: Audited/Provisional financial books, asset valuation documents, bank statements, and the specified certificate format.
+SOP Checklist:
+Source Document Audit: Verify primary source financial records, books of accounts, and ledger entries against the requested parameters.
+Reconciliation Analysis: Ensure all certified values tie back to verifiable financial statements or independent third-party reports.
+Drafting the Certificate: Prepare the certificate layout text, incorporating standard scope descriptions, disclaimers, and data metrics.
+UDIN Generation: Log into the official ICAI UDIN portal to generate a unique tracking number for the document.
+Signing & Issuance: Affix professional signatures, seal the certificate with the active UDIN watermark, and distribute the copies.
+Custom Compliance
+Average Market Price: Varies based on scope (₹3,500 – ₹10,000)
+Client-Facing Description: > Tailored compliance management designed for unique, event-based, or sector-specific regulatory requirements. Covers specialized registrations, filing custom representations before tax authorities, addressing complex department notices, and correcting non-standard compliance backlogs.Client Deliverables Required: Official notices or orders received, historical compliance records, and relevant corporate supporting documentation.
+SOP Checklist:
+Scope Definition: Analyze the specific compliance mandate, departmental notice parameters, or client requirements.
+Information Gathering: Collect supporting details, facts, documents, and historical data points from the client.
+Drafting Responses/Applications: Draft the technical application, response layout, or submission files in the mandated format.
+Quality & Validation Review: Review the submission files for accuracy and compliance with relevant statutory guidelines.
+Filing & Tracking: Submit the finalized application/response to the respective regulatory authority and monitor progress.
+Manual Audit
+Average Market Price: ₹15,000 – ₹50,000+ (Based on scale)
+Client-Facing Description: > Rigorous manual auditing and independent verification of books of accounts, transaction trails, internal controls, and statutory compliances. Focuses on identifying financial errors, structural bookkeeping leaks, systemic operational control gaps, and ensuring compliance with standard accounting practices.Client Deliverables Required: Complete financial books, ledger extracts, bank books, purchase and sale bills, fixed asset registers, and inventory records.
+SOP Checklist:
+Audit Planning: Define the audit scope, establish materiality thresholds, and design specific substantive audit procedures.
+Vouching & Verification: Run thorough sampling checks to vouch sales, purchases, bank payments, cash transactions, and ledger entries.
+Balance Confirmation: Verify bank reconciliation statements, verify cash balances, and review external debtor/creditor balances.
+Compliance & Statutory Check: Review compliance with TDS, GST, corporate laws, and accounting standards.
+Audit Report Formulation: Document audit observations, discuss internal control recommendations with management, and issue the final Audit Report.
