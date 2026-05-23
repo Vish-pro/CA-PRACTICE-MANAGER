@@ -44,6 +44,7 @@ export async function GET(request: Request) {
         user: { select: { id: true, name: true } },
         group: { select: { id: true, name: true } },
         auditor: { select: { id: true, name: true } },
+        rateCards: { include: { service: true } },
         _count: { select: { tasks: true, invoices: true, documents: true } }
       }
     });
