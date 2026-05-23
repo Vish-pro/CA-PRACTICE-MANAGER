@@ -9,6 +9,7 @@ const tabs = [
   { label: "Financial",        href: "/reports/financial" },
   { label: "Tasks",            href: "/reports/tasks" },
   { label: "Billing & Revenue", href: "/reports/billing" },
+  { label: "Operations",        href: "/reports/operations" },
 ];
 
 export default function ReportsLayout({ children }: { children: React.ReactNode }) {
@@ -16,26 +17,32 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="space-y-6">
-      <div className="flex border-b border-border">
-        {tabs.map((tab) => {
-          const isActive = pathname.startsWith(tab.href);
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={cn(
-                "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
-                isActive
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-              )}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
+      {/* Page header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
+        <p className="text-muted-foreground text-sm mt-1">Analytics and insights across your firm.</p>
       </div>
-      <div>{children}</div>
+
+      {/* Tab navigation */}
+      <div className="flex border-b border-border">
+        {tabs.map(tab => (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className={cn(
+              "px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+              pathname.startsWith(tab.href)
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+            )}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {children}
     </div>
   );
 }
