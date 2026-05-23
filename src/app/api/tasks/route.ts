@@ -108,54 +108,80 @@ export async function POST(request: Request) {
 
     // Generate Task ID transaction
     const task = await prisma.$transaction(async (tx) => {
-      // 1. Increment counter
-      const counter = await tx.counter.update({
-        where: { id: 'task' },
-        data: { value: { increment: 1 } }
-      });
+      // Fetch service SOP steps if serviceId is provided
+      const sops = body.serviceId ? await tx.serviceSOP.findMany({
+        where: { serviceId: body.serviceId },
+        orderBy: { orderIndex: 'asc' }
+      }) : [];
 
-      // 2. Create Task
-      const newTask = await tx.task.create({
-        data: {
-          taskNumber: counter.value,
-          title: body.title,
-          description: body.description,
-          status: body.status || 'PENDING',
-          priority: body.priority || 'MEDIUM',
-          dueDate: body.dueDate ? new Date(body.dueDate) : null,
-          createdById: session.user.id,
-          assignedToId: body.assignedToId,
-          reviewerId: body.reviewerId,
-          clientId: body.clientId,
-          serviceId: body.serviceId,
-          category: body.category,
-          isRecurring: body.isRecurring || false,
-          frequency: body.frequency,
-          recurringEnd: body.recurringEnd ? new Date(body.recurringEnd) : null,
+      if (sops.length > 0) {
+        let firstCreatedTask: any = null;
+
+        for (let stepIdx = 0; stepIdx < sops.length; stepIdx++) {
+          const step = sops[stepIdx];
+
+          // 1. Increment counter for each step
+          const counter = await tx.counter.update({
+            where: { id: 'task' },
+            data: { value: { increment: 1 } }
+          });
+
+          // 2. Create separate Task for each step
+          const created = await tx.task.create({
+            data: {
+              taskNumber: counter.value,
+              title: `${step.title}: ${step.description ? (step.description.length > 50 ? step.description.substring(0, 50) + '...' : step.description) : 'Perform Service Action'} - ${body.title}`,
+              description: step.description || body.description,
+              status: body.status || 'PENDING',
+              priority: body.priority || 'MEDIUM',
+              dueDate: body.dueDate ? new Date(body.dueDate) : null,
+              createdById: session.user.id,
+              assignedToId: body.assignedToId,
+              reviewerId: body.reviewerId,
+              clientId: body.clientId,
+              serviceId: body.serviceId,
+              category: body.category,
+              isRecurring: body.isRecurring || false,
+              frequency: body.frequency,
+              recurringEnd: body.recurringEnd ? new Date(body.recurringEnd) : null,
+            }
+          });
+
+          if (stepIdx === 0) {
+            firstCreatedTask = created;
+          }
         }
-      });
 
-      // 3. Optional: Copy SOPs if service is linked
-      if (body.serviceId) {
-        const sops = await tx.serviceSOP.findMany({
-          where: { serviceId: body.serviceId }
+        return firstCreatedTask;
+      } else {
+        // Fallback: Create a single monolithic task if no SOP steps exist
+        const counter = await tx.counter.update({
+          where: { id: 'task' },
+          data: { value: { increment: 1 } }
         });
 
-        if (sops.length > 0) {
-          // Simplest way for now: mapping them to subtasks to reuse the schema since Task doesn't have a dedicated SOP field
-          // OR if there is a specific field for instance SOPs, we'd populate it.
-          // For now, let's map them to subtasks
-          await tx.subtask.createMany({
-            data: sops.map(sop => ({
-              taskId: newTask.id,
-              title: sop.title,
-              isCompleted: false,
-            }))
-          });
-        }
-      }
+        const newTask = await tx.task.create({
+          data: {
+            taskNumber: counter.value,
+            title: body.title,
+            description: body.description,
+            status: body.status || 'PENDING',
+            priority: body.priority || 'MEDIUM',
+            dueDate: body.dueDate ? new Date(body.dueDate) : null,
+            createdById: session.user.id,
+            assignedToId: body.assignedToId,
+            reviewerId: body.reviewerId,
+            clientId: body.clientId,
+            serviceId: body.serviceId,
+            category: body.category,
+            isRecurring: body.isRecurring || false,
+            frequency: body.frequency,
+            recurringEnd: body.recurringEnd ? new Date(body.recurringEnd) : null,
+          }
+        });
 
-      return newTask;
+        return newTask;
+      }
     });
 
     return NextResponse.json({ data: task });

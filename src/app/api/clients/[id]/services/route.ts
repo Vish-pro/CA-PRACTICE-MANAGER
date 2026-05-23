@@ -48,6 +48,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Service already assigned to this client' }, { status: 400 });
     }
 
+    // Fetch client profile to retrieve auditorId and companyName
+    const client = await prisma.clientProfile.findUnique({
+      where: { id: resolvedParams.id }
+    });
+
+    if (!client) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    }
+
+    // Fetch service profile along with its SOP steps
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+      include: { sopSteps: { orderBy: { orderIndex: 'asc' } } }
+    });
+
+    if (!service) {
+      return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+    }
+
     const rateCard = await prisma.clientRateCard.create({
       data: {
         clientId: resolvedParams.id,
@@ -58,6 +77,58 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         service: true
       }
     });
+
+    // Automatically create a separate Task for each SOP step of this service
+    if (service.sopSteps.length > 0) {
+      for (let stepIdx = 0; stepIdx < service.sopSteps.length; stepIdx++) {
+        const step = service.sopSteps[stepIdx];
+
+        // Increment the global task counter
+        const counter = await prisma.counter.update({
+          where: { id: 'task' },
+          data: { value: { increment: 1 } }
+        });
+
+        // Create the task record
+        await prisma.task.create({
+          data: {
+            taskNumber: counter.value,
+            title: `${step.title}: ${step.description ? (step.description.length > 50 ? step.description.substring(0, 50) + '...' : step.description) : 'Perform Service Action'} - ${service.name} (${client.companyName})`,
+            description: step.description || `Step ${stepIdx + 1} of ${service.name} filing.`,
+            status: 'PENDING',
+            priority: 'MEDIUM',
+            dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // due in 15 days
+            clientId: client.id,
+            serviceId: service.id,
+            category: service.category,
+            assignedToId: client.auditorId, // Assigned directly to the client's auditor (employee)
+            createdById: (session as any).user.id || client.auditorId,
+          }
+        });
+      }
+    } else {
+      // Fallback: Create a single task if the service has no SOP steps
+      const counter = await prisma.counter.update({
+        where: { id: 'task' },
+        data: { value: { increment: 1 } }
+      });
+
+      await prisma.task.create({
+        data: {
+          taskNumber: counter.value,
+          title: `File ${service.name} for ${client.companyName}`,
+          description: `Please file the ${service.name} before the due date.`,
+          status: 'PENDING',
+          priority: 'MEDIUM',
+          dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+          clientId: client.id,
+          serviceId: service.id,
+          category: service.category,
+          assignedToId: client.auditorId,
+          createdById: (session as any).user.id || client.auditorId,
+        }
+      });
+    }
 
     return NextResponse.json({ data: rateCard });
   } catch (error) {

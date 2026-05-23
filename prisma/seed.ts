@@ -490,7 +490,7 @@ async function main() {
   console.log(`Created ${clients.length} clients.`);
 
 
-  // 5. Create 25+ sample tasks
+  // 5. Create sample tasks (SOP Steps instantiated as first-class Tasks!)
   const taskStatuses = ['PENDING', 'IN_PROGRESS', 'SENT_FOR_REVIEW', 'REQUEST_CHANGES', 'COMPLETED', 'OVERDUE', 'CANCELLED'];
   const taskPriorities = ['LOW', 'MEDIUM', 'HIGH'];
 
@@ -503,22 +503,73 @@ async function main() {
     const status = taskStatuses[i % taskStatuses.length];
 
     try {
-      await prisma.task.create({
-        data: {
-          taskNumber: taskNumber++,
-          title: `File ${service.name} for ${client.companyName}`,
-          description: `Please file the ${service.name} before the due date.`,
-          status: status,
-          priority: taskPriorities[i % 3],
-          dueDate: new Date(Date.now() + (i * 24 * 60 * 60 * 1000)), // dummy dates
-          assignedToId: assignee,
-          createdById: admin.id,
-          clientId: client.id,
-          serviceId: service.id,
-          category: service.category,
-          reviewerId: reviewer,
+      const parsed = parsedList.find(p => p.dbName === service.name);
+
+      if (parsed && parsed.sopSteps.length > 0) {
+        // Create a separate Task for each SOP step of this service
+        for (let stepIdx = 0; stepIdx < parsed.sopSteps.length; stepIdx++) {
+          const step = parsed.sopSteps[stepIdx];
+
+          // Determine realistic individual step statuses based on the overall service task status
+          let stepStatus = 'PENDING';
+          if (status === 'COMPLETED') {
+            stepStatus = 'COMPLETED';
+          } else if (status === 'CANCELLED') {
+            stepStatus = 'CANCELLED';
+          } else if (status === 'PENDING') {
+            stepStatus = 'PENDING';
+          } else if (status === 'IN_PROGRESS') {
+            if (stepIdx === 0) stepStatus = 'COMPLETED';
+            else if (stepIdx === 1) stepStatus = 'IN_PROGRESS';
+            else stepStatus = 'PENDING';
+          } else if (status === 'SENT_FOR_REVIEW') {
+            if (stepIdx < parsed.sopSteps.length - 1) stepStatus = 'COMPLETED';
+            else stepStatus = 'SENT_FOR_REVIEW';
+          } else if (status === 'REQUEST_CHANGES') {
+            if (stepIdx < parsed.sopSteps.length - 1) stepStatus = 'COMPLETED';
+            else stepStatus = 'REQUEST_CHANGES';
+          } else if (status === 'OVERDUE') {
+            if (stepIdx === 0) stepStatus = 'COMPLETED';
+            else if (stepIdx === 1) stepStatus = 'OVERDUE';
+            else stepStatus = 'PENDING';
+          }
+
+          await prisma.task.create({
+            data: {
+              taskNumber: taskNumber++,
+              title: `${step.title}: ${step.description ? (step.description.length > 50 ? step.description.substring(0, 50) + '...' : step.description) : 'Perform Service Action'} - ${service.name} (${client.companyName})`,
+              description: step.description || `Step ${stepIdx + 1} of ${service.name} filing.`,
+              status: stepStatus,
+              priority: taskPriorities[i % 3],
+              dueDate: new Date(Date.now() + (i * 24 * 60 * 60 * 1000) + (stepIdx * 2 * 24 * 60 * 60 * 1000)), // staggered dummy dates
+              assignedToId: assignee,
+              createdById: admin.id,
+              clientId: client.id,
+              serviceId: service.id,
+              category: service.category,
+              reviewerId: reviewer,
+            }
+          });
         }
-      });
+      } else {
+        // Fallback if service has no SOP steps: create a single monolithic task
+        await prisma.task.create({
+          data: {
+            taskNumber: taskNumber++,
+            title: `File ${service.name} for ${client.companyName}`,
+            description: `Please file the ${service.name} before the due date.`,
+            status: status,
+            priority: taskPriorities[i % 3],
+            dueDate: new Date(Date.now() + (i * 24 * 60 * 60 * 1000)),
+            assignedToId: assignee,
+            createdById: admin.id,
+            clientId: client.id,
+            serviceId: service.id,
+            category: service.category,
+            reviewerId: reviewer,
+          }
+        });
+      }
     } catch (err: any) {
       console.error(`FAILED AT TASK INDEX i = ${i}`);
       console.error(`- Client: ${client.companyName} (ID: ${client.id})`);
