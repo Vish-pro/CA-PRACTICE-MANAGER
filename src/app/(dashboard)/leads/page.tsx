@@ -53,16 +53,16 @@ export default function LeadsPage() {
     setLoading(true);
     try {
       const url = new URL("/api/leads", window.location.origin);
-      if (stageFilter !== "ALL") url.searchParams.append("stage", stageFilter);
-      if (search) url.searchParams.append("search", search);
-
       if (activeStatCard === "OPEN") {
         url.searchParams.set("stages", "NEW,CONTACTED,QUALIFIED");
       } else if (activeStatCard === "CONVERTED") {
         url.searchParams.set("stage", "CONVERTED");
       } else if (activeStatCard === "LOST") {
         url.searchParams.set("stage", "LOST");
+      } else if (stageFilter !== "ALL") {
+        url.searchParams.append("stage", stageFilter);
       }
+      if (search) url.searchParams.append("search", search);
 
       const res = await fetch(url.toString());
       const json = await res.json();
@@ -76,6 +76,19 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSelectChange = (id: string, selected: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (selected) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) setSelectedIds(new Set(leads.map(l => l.id)));
+    else setSelectedIds(new Set());
   };
 
   const handleRowClick = async (row: any) => {
@@ -139,18 +152,7 @@ export default function LeadsPage() {
     fetchLeads();
   };
 
-  const handleSelectChange = (id: string, selected: boolean) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (selected) next.add(id); else next.delete(id);
-      return next;
-    });
-  };
 
-  const handleSelectAll = (selected: boolean) => {
-    if (selected) setSelectedIds(new Set(leads.map(l => l.id)));
-    else setSelectedIds(new Set());
-  };
 
   const handleConvertClient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,64 +277,65 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6">
       {/* Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div
-          onClick={() => setActiveStatCard("OPEN")}
-          className={cn("bg-white border rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "OPEN" ? "ring-2 ring-offset-1 ring-primary" : "")}
-        >
-          <div>
-            <div className="text-3xl font-bold">{stats.open || 0}</div>
-            <div className="text-xs text-muted-foreground mt-1">Open</div>
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div
+            onClick={() => setActiveStatCard("OPEN")}
+            className={cn("bg-white border rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "OPEN" ? "ring-2 ring-offset-1 ring-primary" : "")}
+          >
+            <div>
+              <div className="text-3xl font-bold">{stats.open || 0}</div>
+              <div className="text-xs text-muted-foreground mt-1">Open</div>
+            </div>
+            <Clock className="w-10 h-10 text-gray-300" />
           </div>
-          <Clock className="w-10 h-10 text-gray-300" />
-        </div>
-        <div
-          onClick={() => setActiveStatCard("CONVERTED")}
-          className={cn("bg-green-50 border border-green-100 rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "CONVERTED" ? "ring-2 ring-offset-1 ring-green-500" : "")}
-        >
-          <div>
-            <div className="text-3xl font-bold text-green-700">{stats.converted || 0}</div>
-            <div className="text-xs text-green-600/80 mt-1">Converted</div>
+          <div
+            onClick={() => setActiveStatCard("CONVERTED")}
+            className={cn("bg-green-50 border border-green-100 rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "CONVERTED" ? "ring-2 ring-offset-1 ring-green-500" : "")}
+          >
+            <div>
+              <div className="text-3xl font-bold text-green-700">{stats.converted || 0}</div>
+              <div className="text-xs text-green-600/80 mt-1">Converted</div>
+            </div>
+            <CheckCircle className="w-10 h-10 text-green-200" />
           </div>
-          <CheckCircle className="w-10 h-10 text-green-200" />
-        </div>
-        <div
-          onClick={() => setActiveStatCard("LOST")}
-          className={cn("bg-red-50 border border-red-100 rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "LOST" ? "ring-2 ring-offset-1 ring-red-500" : "")}
-        >
-          <div>
-            <div className="text-3xl font-bold text-red-700">{stats.lost || 0}</div>
-            <div className="text-xs text-red-600/80 mt-1">Lost</div>
+          <div
+            onClick={() => setActiveStatCard("LOST")}
+            className={cn("bg-red-50 border border-red-100 rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "LOST" ? "ring-2 ring-offset-1 ring-red-500" : "")}
+          >
+            <div>
+              <div className="text-3xl font-bold text-red-700">{stats.lost || 0}</div>
+              <div className="text-xs text-red-600/80 mt-1">Lost</div>
+            </div>
+            <UserX className="w-10 h-10 text-red-200" />
           </div>
-          <UserX className="w-10 h-10 text-red-200" />
-        </div>
-        <div
-          onClick={() => setActiveStatCard("ALL")}
-          className={cn("bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "ALL" ? "ring-2 ring-offset-1 ring-blue-500" : "")}
-        >
-          <div>
-            <div className="text-3xl font-bold text-blue-700">{stats.total || 0}</div>
-            <div className="text-xs text-blue-600/80 mt-1">Total Leads</div>
+          <div
+            onClick={() => setActiveStatCard("ALL")}
+            className={cn("bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between cursor-pointer", activeStatCard === "ALL" ? "ring-2 ring-offset-1 ring-blue-500" : "")}
+          >
+            <div>
+              <div className="text-3xl font-bold text-blue-700">{stats.total || 0}</div>
+              <div className="text-xs text-blue-600/80 mt-1">Total Leads</div>
+            </div>
+            <Users className="w-10 h-10 text-blue-200" />
           </div>
-          <Users className="w-10 h-10 text-blue-200" />
-        </div>
-        <div className="bg-cyan-50 border border-cyan-100 rounded-xl p-4 flex items-center justify-between">
-          <div>
-            <div className="text-3xl font-bold text-cyan-700">{conversionRate}%</div>
-            <div className="text-xs text-cyan-600/80 mt-1">Conversion Rate</div>
+          <div className="bg-cyan-50 border border-cyan-100 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <div className="text-3xl font-bold text-cyan-700">{conversionRate}%</div>
+              <div className="text-xs text-cyan-600/80 mt-1">Conversion Rate</div>
+            </div>
+            <Percent className="w-10 h-10 text-cyan-200" />
           </div>
-          <Percent className="w-10 h-10 text-cyan-200" />
         </div>
+        {activeStatCard !== "ALL" && (
+          <button
+            onClick={() => setActiveStatCard("ALL")}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Clear filter
+          </button>
+        )}
       </div>
-
-      {activeStatCard !== "ALL" && (
-        <button
-          onClick={() => setActiveStatCard("ALL")}
-          className="text-xs text-muted-foreground hover:text-foreground underline"
-        >
-          Clear filter
-        </button>
-      )}
 
       {/* Table Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

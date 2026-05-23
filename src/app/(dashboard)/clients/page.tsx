@@ -21,13 +21,13 @@ export default function ClientsPage() {
   const [groups, setGroups] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchClients();
-  }, [search]);
-
-  useEffect(() => {
     fetch('/api/users').then(r => r.json()).then(d => setStaff(d.data || []));
     fetch('/api/groups').then(r => r.json()).then(d => setGroups(d.data || []));
   }, []);
+
+  useEffect(() => {
+    fetchClients();
+  }, [search]);
 
   const fetchClients = async () => {
     setLoading(true);
@@ -46,6 +46,34 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const data = new FormData(form);
+    const labels = (data.get("labels") as string || "").trim();
+
+    await fetch("/api/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        businessName: data.get("businessName"),
+        legalName: data.get("legalName"),
+        businessEntity: data.get("businessEntity"),
+        contactName: data.get("contactName"),
+        contactEmail: data.get("contactEmail"),
+        mobile: data.get("mobile"),
+        gstNumber: data.get("gstNumber"),
+        panNumber: data.get("panNumber"),
+        address: data.get("address"),
+        auditorId: data.get("auditorId") || null,
+        groupId: data.get("groupId") || null,
+        labels: labels || null,
+      }),
+    });
+    setIsAddOpen(false);
+    fetchClients();
   };
 
   const handleRowClick = (row: any) => {
@@ -144,33 +172,7 @@ export default function ClientsPage() {
     e.target.value = ''; // Reset input
   };
 
-  const handleAddClient = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const data = new FormData(form);
-    const labels = (data.get("labels") as string || "").trim();
 
-    await fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        businessName: data.get("businessName"),
-        legalName: data.get("legalName"),
-        businessEntity: data.get("businessEntity"),
-        contactName: data.get("contactName"),
-        contactEmail: data.get("contactEmail"),
-        mobile: data.get("mobile"),
-        gstNumber: data.get("gstNumber"),
-        panNumber: data.get("panNumber"),
-        address: data.get("address"),
-        auditorId: data.get("auditorId") || null,
-        groupId: data.get("groupId") || null,
-        labels: labels || null,
-      }),
-    });
-    setIsAddOpen(false);
-    fetchClients();
-  };
 
   const columns: ColumnDef<any>[] = [
     {
