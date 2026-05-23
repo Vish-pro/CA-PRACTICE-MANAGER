@@ -261,22 +261,32 @@ async function main() {
     const reviewer = i % 3 === 0 ? senior.id : admin.id;
     const status = taskStatuses[i % taskStatuses.length];
 
-    await prisma.task.create({
-      data: {
-        taskNumber: taskNumber++,
-        title: `File ${service.name} for ${client.companyName}`,
-        description: `Please file the ${service.name} before the due date.`,
-        status: status,
-        priority: taskPriorities[i % 3],
-        dueDate: new Date(Date.now() + (i * 24 * 60 * 60 * 1000)), // dummy dates
-        assignedToId: assignee,
-        createdById: admin.id,
-        clientId: client.id,
-        serviceId: service.id,
-        category: service.category,
-        reviewerId: reviewer,
-      }
-    });
+    try {
+      await prisma.task.create({
+        data: {
+          taskNumber: taskNumber++,
+          title: `File ${service.name} for ${client.companyName}`,
+          description: `Please file the ${service.name} before the due date.`,
+          status: status,
+          priority: taskPriorities[i % 3],
+          dueDate: new Date(Date.now() + (i * 24 * 60 * 60 * 1000)), // dummy dates
+          assignedToId: assignee,
+          createdById: admin.id,
+          clientId: client.id,
+          serviceId: service.id,
+          category: service.category,
+          reviewerId: reviewer,
+        }
+      });
+    } catch (err: any) {
+      console.error(`FAILED AT TASK INDEX i = ${i}`);
+      console.error(`- Client: ${client.companyName} (ID: ${client.id})`);
+      console.error(`- Service: ${service?.name} (ID: ${service?.id}, Category: ${service?.category})`);
+      console.error(`- Assignee ID: ${assignee}`);
+      console.error(`- Reviewer ID: ${reviewer}`);
+      console.error(`- Creator ID: ${admin.id}`);
+      throw err;
+    }
   }
 
   console.log(`Created tasks.`);
@@ -327,15 +337,20 @@ async function main() {
 
   console.log(`Created leads.`);
 
-  // 7. Initialise Counter records
-  await prisma.counter.createMany({
-    data: [
-      { id: 'task', value: 874 },
-      { id: 'client_PLC', value: 2 },
-      { id: 'client_PVT', value: 2 },
-      { id: 'client_PAR', value: 0 },
-    ]
-  });
+  // 7. Initialise Counter records idempotently
+  const counters = [
+    { id: 'task', value: 874 },
+    { id: 'client_PLC', value: 2 },
+    { id: 'client_PVT', value: 2 },
+    { id: 'client_PAR', value: 0 },
+  ];
+  for (const ctr of counters) {
+    await prisma.counter.upsert({
+      where: { id: ctr.id },
+      update: { value: ctr.value },
+      create: { id: ctr.id, value: ctr.value },
+    });
+  }
 
   console.log('Seed complete!');
 }
