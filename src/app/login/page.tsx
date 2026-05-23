@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { signIn, getCsrfToken } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,15 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [csrfToken, setCsrfToken] = useState<string | undefined>("");
+
+  useEffect(() => {
+    async function fetchCsrfToken() {
+      const token = await getCsrfToken();
+      setCsrfToken(token);
+    }
+    fetchCsrfToken();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +39,7 @@ function LoginForm() {
         email,
         password,
         redirect: false,
+        csrfToken,
       });
 
       if (res?.error) {
@@ -54,6 +64,7 @@ function LoginForm() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <input name="csrfToken" type="hidden" defaultValue={csrfToken} />
             <div className="space-y-2">
               <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="email">
                 Email
