@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card"; // CardHeader and CardTitle were removed as they were unused
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, FileText, IndianRupee, Calendar } from "lucide-react";
 import { toast } from "react-hot-toast";
