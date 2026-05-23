@@ -1,15 +1,41 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, AlertTriangle, Key } from "lucide-react";
+import { Plus, AlertTriangle, Key, Loader2 } from "lucide-react";
+
+type DSCData = {
+  id: string;
+  client: string;
+  holder: string;
+  expiry: string;
+  location: string;
+  status: string;
+};
 
 export default function DSCRegisterPage() {
-  const dscs = [
-    { id: 1, client: "Acme Corp", holder: "John Smith", expiry: "2023-10-25", location: "Drawer A", status: "EXPIRING_SOON" },
-    { id: 2, client: "TechFlow Inc", holder: "Sarah Lynn", expiry: "2024-05-12", location: "With Client", status: "ACTIVE" },
-    { id: 3, client: "Global Trade", holder: "Mike Ross", expiry: "2023-09-10", location: "Locker 2", status: "EXPIRED" },
-  ];
+  const [dscs, setDscs] = useState<DSCData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchDSCs() {
+      try {
+        const response = await fetch('/api/registers/dsc');
+        if (!response.ok) {
+          throw new Error('Failed to fetch DSC register');
+        }
+        const data = await response.json();
+        setDscs(data);
+      } catch (error) {
+        console.error('Error fetching DSCs:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDSCs();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -35,7 +61,21 @@ export default function DSCRegisterPage() {
               </tr>
             </thead>
             <tbody>
-              {dscs.map((dsc) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                    Loading DSC register...
+                  </td>
+                </tr>
+              ) : dscs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                    No DSCs found.
+                  </td>
+                </tr>
+              ) : (
+                dscs.map((dsc) => (
                 <tr key={dsc.id} className="border-b last:border-0 hover:bg-muted/20">
                   <td className="px-6 py-4 font-medium text-foreground">{dsc.client}</td>
                   <td className="px-6 py-4 flex items-center"><Key className="w-4 h-4 mr-2 text-muted-foreground" />{dsc.holder}</td>
@@ -50,7 +90,7 @@ export default function DSCRegisterPage() {
                     <Button variant="outline" size="sm">Renew</Button>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </CardContent>
