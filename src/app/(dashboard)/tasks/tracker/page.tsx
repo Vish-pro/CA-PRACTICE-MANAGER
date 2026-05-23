@@ -1,6 +1,7 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, ListChecks } from "lucide-react";
 
@@ -13,6 +14,22 @@ const mockTasks = [
 ];
 
 export default function LiveTaskTracker() {
+  const tasksByStatus = useMemo(() => {
+    const grouped = taskStatuses.reduce((acc, status) => {
+      acc[status] = [];
+      return acc;
+    }, {} as Record<string, typeof mockTasks>);
+
+    mockTasks.forEach(task => {
+      if (grouped[task.status]) {
+        grouped[task.status].push(task);
+      } else {
+        grouped[task.status] = [task];
+      }
+    });
+    return grouped;
+  }, []);
+
   return (
     <div className="space-y-6 h-full flex flex-col">
       <div className="flex justify-between items-center">
@@ -27,16 +44,18 @@ export default function LiveTaskTracker() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-1 pb-6 overflow-x-auto">
-        {taskStatuses.map(status => (
+        {taskStatuses.map(status => {
+          const statusTasks = tasksByStatus[status] || [];
+          return (
           <div key={status} className="flex flex-col h-full bg-muted/30 rounded-xl p-4">
             <h3 className="font-semibold text-sm mb-4 flex items-center justify-between text-muted-foreground">
               {status}
               <span className="bg-background px-2 py-0.5 rounded-full text-xs">
-                {mockTasks.filter(t => t.status === status).length}
+                {statusTasks.length}
               </span>
             </h3>
             <div className="space-y-3 flex-1 overflow-y-auto">
-              {mockTasks.filter(t => t.status === status).map(task => (
+              {statusTasks.map(task => (
                 <Card key={task.id} className="cursor-pointer hover:border-primary transition-colors">
                   <CardContent className="p-4 space-y-2">
                     <p className="font-medium text-sm leading-tight">{task.title}</p>
@@ -47,14 +66,14 @@ export default function LiveTaskTracker() {
                   </CardContent>
                 </Card>
               ))}
-              {mockTasks.filter(t => t.status === status).length === 0 && (
+              {statusTasks.length === 0 && (
                 <div className="h-24 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground/50 text-sm">
                   Drop here
                 </div>
               )}
             </div>
           </div>
-        ))}
+        )})}
       </div>
     </div>
   );
