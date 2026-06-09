@@ -6,7 +6,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { Avatar } from "@/components/ui/avatar";
 import { SlideOver } from "@/components/ui/slide-over";
-import { Users, UserPlus, UserCheck, UserSearch, MoreVertical, Plus } from "lucide-react";
+import { Users, UserPlus, UserCheck, UserSearch, MoreVertical, Plus, Folder, Edit2, Trash2 } from "lucide-react";
 import Papa from "papaparse";
 import toast from "react-hot-toast";
 
@@ -19,15 +19,104 @@ export default function ClientsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [staff, setStaff] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Groups Management Drawer States
+  const [isGroupsOpen, setIsGroupsOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<any | null>(null);
+  const [groupName, setGroupName] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
+
 
   useEffect(() => {
     fetch('/api/users').then(r => r.json()).then(d => setStaff(d.data || []));
     fetch('/api/groups').then(r => r.json()).then(d => setGroups(d.data || []));
   }, []);
 
+  const fetchGroups = async () => {
+    try {
+      const res = await fetch('/api/groups');
+      const json = await res.json();
+      if (json.data) setGroups(json.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleGroupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingGroup) {
+        // Edit group
+        const res = await fetch(`/api/groups?id=${editingGroup.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: groupName, description: groupDescription })
+        });
+        if (res.ok) {
+          toast.success("Business Group updated successfully");
+          setEditingGroup(null);
+          setGroupName("");
+          setGroupDescription("");
+          fetchGroups();
+        } else {
+          toast.error("Failed to update group");
+        }
+      } else {
+        // Add group
+        const res = await fetch("/api/groups", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: groupName, description: groupDescription })
+        });
+        if (res.ok) {
+          toast.success("Business Group created successfully");
+          setGroupName("");
+          setGroupDescription("");
+          fetchGroups();
+        } else {
+          toast.error("Failed to create group");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An error occurred");
+    }
+  };
+
+  const deleteGroup = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this business group? Clients will be unlinked.")) return;
+    try {
+      const res = await fetch(`/api/groups?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Group removed successfully");
+        fetchGroups();
+        fetchClients();
+      } else {
+        toast.error("Failed to delete group");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("An error occurred");
+    }
+  };
+
   useEffect(() => {
     fetchClients();
   }, [search]);
+
+  const handleSelectChange = (id: string, selected: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (selected) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) setSelectedIds(new Set(clients.map(c => c.id)));
+    else setSelectedIds(new Set());
+  };
 
   const fetchClients = async () => {
     setLoading(true);
@@ -39,6 +128,7 @@ export default function ClientsPage() {
       const json = await res.json();
       if (json.data) {
         setClients(json.data);
+        setSelectedIds(new Set());
         setStats(json.stats || {});
       }
     } catch (error) {
@@ -313,6 +403,16 @@ export default function ClientsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-lg font-bold">Client ({clients.length})</h1>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={() => {
+              fetchGroups();
+              setIsGroupsOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 border rounded-md text-xs font-semibold text-[#1b4d3e] hover:bg-muted transition-colors"
+          >
+            <Folder className="w-4 h-4 text-[#1b4d3e]" />
+            📂 Business Groups
+          </button>
           <SearchInput
             placeholder="Search clients..."
             value={search}
@@ -345,6 +445,9 @@ export default function ClientsPage() {
         data={clients}
         keyExtractor={(row) => row.id}
         selectable
+        selectedIds={selectedIds}
+        onSelectChange={handleSelectChange}
+        onSelectAll={handleSelectAll}
         onRowClick={handleRowClick}
       />
 
@@ -450,6 +553,224 @@ export default function ClientsPage() {
           <button form="add-client-form" type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium">Add Client</button>
         </div>
       </SlideOver>
+
+      {/* Floating Bulk Action Bar for Clients */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-[#1b4d3e] text-white py-3 px-6 rounded-full shadow-2xl z-50 flex items-center gap-6 border border-emerald-800 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <span className="text-sm font-semibold">
+            {selectedIds.size} {selectedIds.size === 1 ? "client" : "clients"} selected
+          </span>
+          <div className="h-4 w-px bg-emerald-700/60" />
+          <div className="flex items-center gap-4">
+            {/* Bulk Assign Auditor */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-emerald-300 font-medium">Auditor:</span>
+              <select
+                className="bg-emerald-900 border border-emerald-700 text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-white"
+                onChange={async (e) => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  const res = await fetch("/api/clients/bulk", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      ids: Array.from(selectedIds),
+                      data: { auditorId: val === "unassigned" ? null : val }
+                    })
+                  });
+                  if (res.ok) {
+                    setSelectedIds(new Set());
+                    fetchClients();
+                  }
+                  e.target.value = ""; // reset
+                }}
+              >
+                <option value="">Assign Auditor...</option>
+                <option value="unassigned">Unassigned</option>
+                {staff.filter(u => u.role === 'ADMIN' || u.role === 'SENIOR_STAFF').map((u: any) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Bulk Group */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-emerald-300 font-medium">Group:</span>
+              <select
+                className="bg-emerald-900 border border-emerald-700 text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-white"
+                onChange={async (e) => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  const res = await fetch("/api/clients/bulk", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      ids: Array.from(selectedIds),
+                      data: { groupId: val === "none" ? null : val }
+                    })
+                  });
+                  if (res.ok) {
+                    setSelectedIds(new Set());
+                    fetchClients();
+                  }
+                  e.target.value = ""; // reset
+                }}
+              >
+                <option value="">Move to Group...</option>
+                <option value="none">No Group</option>
+                {groups.map((g: any) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Bulk Labels */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-emerald-300 font-medium">Add Labels:</span>
+              <input
+                type="text"
+                placeholder="Press Enter..."
+                className="bg-emerald-900 border border-emerald-700 text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-white placeholder-emerald-600/70 w-24"
+                onKeyDown={async (e) => {
+                  if (e.key === 'Enter') {
+                    const val = e.currentTarget.value.trim();
+                    if (!val) return;
+                    const res = await fetch("/api/clients/bulk", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        ids: Array.from(selectedIds),
+                        data: { labels: val }
+                      })
+                    });
+                    if (res.ok) {
+                      setSelectedIds(new Set());
+                      fetchClients();
+                    }
+                    e.currentTarget.value = ""; // reset
+                  }
+                }}
+              />
+            </div>
+
+            <div className="h-4 w-px bg-emerald-700/60" />
+
+            <button
+              className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Client Business Groups Manager SlideOver */}
+      <SlideOver
+        open={isGroupsOpen}
+        onClose={() => {
+          setIsGroupsOpen(false);
+          setEditingGroup(null);
+          setGroupName("");
+          setGroupDescription("");
+        }}
+        title="Client Business Groups Manager"
+      >
+        <div className="space-y-6 pt-4">
+          <div className="text-xs text-muted-foreground font-medium">
+            Define corporate umbrella families (Concept 1: Client Business Groups) to link parents and subsidiaries.
+          </div>
+
+          <form onSubmit={handleGroupSubmit} className="space-y-3 bg-muted/30 p-3.5 rounded-lg border">
+            <div className="text-xs font-bold uppercase tracking-wider text-[#1b4d3e]">
+              {editingGroup ? "✏️ Edit Business Group" : "➕ Add Corporate Umbrella Group"}
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Group Name *</label>
+              <input
+                required
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="e.g. Tata Group"
+                className="w-full p-2 border rounded text-xs bg-background text-foreground"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">Description</label>
+              <textarea
+                value={groupDescription}
+                onChange={(e) => setGroupDescription(e.target.value)}
+                placeholder="Brief group details..."
+                rows={2}
+                className="w-full p-2 border rounded text-xs bg-background text-foreground resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-1.5 pt-2">
+              {editingGroup && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingGroup(null);
+                    setGroupName("");
+                    setGroupDescription("");
+                  }}
+                  className="px-2.5 py-1.5 border rounded text-[10px] font-semibold"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="submit"
+                className="px-3 py-1.5 bg-[#1b4d3e] text-white rounded text-[10px] font-semibold hover:bg-emerald-950 transition-colors"
+              >
+                {editingGroup ? "Save Changes" : "Create Group"}
+              </button>
+            </div>
+          </form>
+
+          <div className="border rounded-lg overflow-hidden bg-background">
+            <div className="px-3.5 py-2.5 bg-muted/50 border-b text-xs font-bold text-[#1b4d3e] uppercase tracking-wider">
+              Active Umbrella Groups ({groups.length})
+            </div>
+            <div className="divide-y max-h-72 overflow-y-auto">
+              {groups.length === 0 ? (
+                <div className="p-4 text-center text-xs text-muted-foreground italic">No corporate umbrella groups found</div>
+              ) : (
+                groups.map((g) => (
+                  <div key={g.id} className="p-3 flex items-center justify-between hover:bg-muted/10 transition-colors">
+                    <div>
+                      <div className="text-xs font-bold text-primary">{g.name}</div>
+                      {g.description && <div className="text-[10px] text-muted-foreground mt-0.5">{g.description}</div>}
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => {
+                          setEditingGroup(g);
+                          setGroupName(g.name);
+                          setGroupDescription(g.description || "");
+                        }}
+                        className="p-1 hover:bg-muted rounded text-[#1b4d3e]"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => deleteGroup(g.id)}
+                        className="p-1 hover:bg-muted rounded text-red-500 hover:text-red-700"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </SlideOver>
+
     </div>
   );
 }
+

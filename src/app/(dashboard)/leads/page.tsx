@@ -11,7 +11,7 @@ import { ConfirmByTyping } from "@/components/ui/confirm-by-typing";
 import { useSession } from "next-auth/react";
 import {
   Clock, CheckCircle, UserX, Users, Percent,
-  MoreVertical, Filter, AlignJustify, Plus
+  MoreVertical, Filter, AlignJustify, Plus, LayoutGrid, List
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -22,6 +22,7 @@ export default function LeadsPage() {
   const [activeStatCard, setActiveStatCard] = useState<string>("ALL");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
 
   const [leads, setLeads] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
@@ -30,6 +31,9 @@ export default function LeadsPage() {
   // Filters
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("ALL");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filterStages, setFilterStages] = useState<string[]>([]);
+  const [filterSources, setFilterSources] = useState<string[]>([]);
 
   // Slide Over state
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -40,13 +44,46 @@ export default function LeadsPage() {
   // References for Convert Modal dropdowns
   const [staff, setStaff] = useState<any[]>([]);
 
-  useEffect(() => {
-    fetchLeads();
-  }, [stageFilter, search, activeStatCard]);
+  // Pipeline Config Drawer States
+  const [isPipelineConfigOpen, setIsPipelineConfigOpen] = useState(false);
+  const [customSources, setCustomSources] = useState<string[]>([]);
+  const [customStages, setCustomStages] = useState<string[]>([]);
+  const [newCustomSource, setNewCustomSource] = useState("");
+  const [newCustomStage, setNewCustomStage] = useState("");
 
   useEffect(() => {
-    // Note: To fetch staff users
-    // For now we will mock it or leave it as text fields if api doesn't exist
+    // Load custom pipeline configurations
+    const storedSources = localStorage.getItem("leads_custom_sources");
+    const storedStages = localStorage.getItem("leads_custom_stages");
+    if (storedSources) {
+      setCustomSources(JSON.parse(storedSources));
+    } else {
+      const defaultSources = ["Website", "Referral", "Walk-in", "Social Media", "Cold Call", "Other"];
+      setCustomSources(defaultSources);
+      localStorage.setItem("leads_custom_sources", JSON.stringify(defaultSources));
+    }
+
+    if (storedStages) {
+      setCustomStages(JSON.parse(storedStages));
+    } else {
+      const defaultStages = ["NEW", "CONTACTED", "QUALIFIED", "CONVERTED", "LOST"];
+      setCustomStages(defaultStages);
+      localStorage.setItem("leads_custom_stages", JSON.stringify(defaultStages));
+    }
+  }, []);
+
+
+  useEffect(() => {
+    fetchLeads();
+  }, [stageFilter, search, activeStatCard, filterStages, filterSources]);
+
+  useEffect(() => {
+    fetch("/api/users")
+      .then(res => res.json())
+      .then(json => {
+        if (json.data) setStaff(json.data);
+      })
+      .catch(err => console.error("Failed to fetch staff", err));
   }, []);
 
   const fetchLeads = async () => {
@@ -56,11 +93,18 @@ export default function LeadsPage() {
       if (activeStatCard === "OPEN") {
         url.searchParams.set("stages", "NEW,CONTACTED,QUALIFIED");
       } else if (activeStatCard === "CONVERTED") {
-        url.searchParams.set("stage", "CONVERTED");
+        url.searchParams.set("stages", "CONVERTED");
       } else if (activeStatCard === "LOST") {
-        url.searchParams.set("stage", "LOST");
+        url.searchParams.set("stages", "LOST");
       } else if (stageFilter !== "ALL") {
-        url.searchParams.append("stage", stageFilter);
+        url.searchParams.set("stages", stageFilter);
+      }
+
+      if (filterStages.length > 0) {
+        url.searchParams.set("stages", filterStages.join(","));
+      }
+      if (filterSources.length > 0) {
+        url.searchParams.set("sources", filterSources.join(","));
       }
       if (search) url.searchParams.append("search", search);
 
@@ -120,6 +164,7 @@ export default function LeadsPage() {
       stage: formData.get("stage"),
       dealValue: formData.get("dealValue"),
       dealType: formData.get("dealType"),
+      assignedToId: formData.get("assignedToId") || null,
       notes: formData.get("notes"),
     };
 
@@ -338,25 +383,120 @@ export default function LeadsPage() {
       </div>
 
       {/* Table Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-lg font-bold">Leads ({leads.length})</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1b4d3e]">Leads & Sales CRM</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Track potential professional client mandates, lead scoring, and pipeline conversion stages.</p>
+        </div>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsPipelineConfigOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 border rounded-md text-xs font-semibold text-[#1b4d3e] hover:bg-muted transition-colors"
+          >
+            ⚡ Lead Pipeline Config
+          </button>
           <SearchInput
             placeholder="Search..."
             value={search}
             onChange={setSearch}
             className="w-48 sm:w-64"
           />
-          <button className="flex items-center gap-2 px-3 py-2 border rounded-md hover:bg-muted text-sm font-medium transition-colors">
-            <Filter className="w-4 h-4" /> Filters <span className="text-xs">▼</span>
-          </button>
-          <button className="p-2 border rounded-md hover:bg-muted transition-colors">
-            <AlignJustify className="w-5 h-5 text-muted-foreground" />
+          <div className="relative">
+            <button
+              onClick={() => setIsFilterOpen(f => !f)}
+              className="flex items-center gap-2 px-3 py-2 border rounded-md hover:bg-muted text-sm font-medium transition-colors"
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+              {(filterStages.length + filterSources.length) > 0 && (
+                <span className="bg-primary text-primary-foreground text-xs rounded-full px-1.5 py-0.5 ml-1">
+                  {filterStages.length + filterSources.length}
+                </span>
+              )}
+              <span className="text-xs">▼</span>
+            </button>
+
+            {isFilterOpen && (
+              <>
+                {/* Backdrop to close menu when clicking outside */}
+                <div className="fixed inset-0 z-40" onClick={() => setIsFilterOpen(false)} />
+                <div className="absolute right-0 mt-2 w-72 bg-popover border shadow-xl rounded-xl z-50 p-4 space-y-4">
+                  {/* Stage filter */}
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Stage</div>
+                    <div className="space-y-1">
+                      {["NEW", "CONTACTED", "QUALIFIED", "CONVERTED", "LOST"].map(s => (
+                        <label key={s} className="flex items-center gap-2 text-sm cursor-pointer hover:text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={filterStages.includes(s)}
+                            onChange={(e) => {
+                              if (e.target.checked) setFilterStages(prev => [...prev, s]);
+                              else setFilterStages(prev => prev.filter(x => x !== s));
+                            }}
+                            className="rounded"
+                          />
+                          {s.charAt(0) + s.slice(1).toLowerCase()}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Source filter */}
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Source</div>
+                    <div className="space-y-1">
+                      {["Website", "Referral", "Walk-in", "Social Media", "Cold Call", "Other"].map(s => (
+                        <label key={s} className="flex items-center gap-2 text-sm cursor-pointer hover:text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={filterSources.includes(s)}
+                            onChange={(e) => {
+                              if (e.target.checked) setFilterSources(prev => [...prev, s]);
+                              else setFilterSources(prev => prev.filter(x => x !== s));
+                            }}
+                            className="rounded"
+                          />
+                          {s}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <button
+                      onClick={() => { setFilterStages([]); setFilterSources([]); setIsFilterOpen(false); }}
+                      className="text-xs text-muted-foreground hover:text-foreground underline"
+                    >
+                      Clear All
+                    </button>
+                    <button
+                      onClick={() => setIsFilterOpen(false)}
+                      className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium"
+                    >
+                      Apply Filters
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          <button
+            onClick={() => setViewMode(v => v === "table" ? "kanban" : "table")}
+            title={viewMode === "table" ? "Switch to Pipeline Grid View" : "Switch to Table View"}
+            className="p-2 border rounded-md hover:bg-muted transition-colors flex items-center justify-center text-muted-foreground hover:text-foreground"
+          >
+            {viewMode === "table" ? (
+              <LayoutGrid className="w-5 h-5" />
+            ) : (
+              <List className="w-5 h-5" />
+            )}
           </button>
           <div className="relative">
             <button
               className="p-2 border rounded-md hover:bg-muted transition-colors"
               onClick={() => setIsMenuOpen(v => !v)}
+              data-testid="leads-menu-button"
             >
               <MoreVertical className="w-5 h-5 text-muted-foreground" />
             </button>
@@ -368,6 +508,7 @@ export default function LeadsPage() {
                   <button
                     className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 text-foreground"
                     onClick={() => { setIsAddOpen(true); setIsMenuOpen(false); }}
+                    data-testid="add-lead-button"
                   >
                     <Plus className="w-4 h-4" /> Add Lead
                   </button>
@@ -378,16 +519,73 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={leads}
-        keyExtractor={(row) => row.id}
-        selectable
-        selectedIds={selectedIds}
-        onSelectChange={handleSelectChange}
-        onSelectAll={handleSelectAll}
-        onRowClick={handleRowClick}
-      />
+      {viewMode === "table" ? (
+        <DataTable
+          columns={columns}
+          data={leads}
+          keyExtractor={(row) => row.id}
+          selectable
+          selectedIds={selectedIds}
+          onSelectChange={handleSelectChange}
+          onSelectAll={handleSelectAll}
+          onRowClick={handleRowClick}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto pb-4">
+          {["NEW", "CONTACTED", "QUALIFIED", "CONVERTED", "LOST"].map(stage => {
+            const stageLeads = leads.filter(l => l.stage === stage);
+            return (
+              <div key={stage} className="bg-muted/30 border border-border/50 rounded-xl p-3 flex flex-col min-w-[220px] min-h-[450px]">
+                <div className="flex items-center justify-between mb-3 pb-2 border-b">
+                  <span className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
+                    {stage}
+                  </span>
+                  <span className="bg-white border text-xs px-2 py-0.5 rounded-full font-bold">
+                    {stageLeads.length}
+                  </span>
+                </div>
+                <div className="space-y-3 flex-1 overflow-y-auto max-h-[600px] scrollbar-hide">
+                  {stageLeads.map(lead => (
+                    <div
+                      key={lead.id}
+                      onClick={() => handleRowClick(lead)}
+                      className="bg-card border rounded-lg p-3 hover:border-primary hover:shadow-sm transition-all cursor-pointer space-y-3 relative overflow-hidden group"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Avatar name={lead.businessName} size="sm" />
+                        <span className="font-semibold text-sm line-clamp-1 group-hover:text-primary transition-colors">{lead.businessName}</span>
+                      </div>
+                      
+                      {lead.contactName && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          👤 {lead.contactName}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40">
+                        <span className="font-bold text-foreground">
+                          {lead.dealValue ? `₹${lead.dealValue.toLocaleString()}` : "—"}
+                        </span>
+                        <span className={cn(
+                          "px-1.5 py-0.5 rounded text-[10px] font-bold",
+                          calculateScoreColor(lead.leadScore)
+                        )}>
+                          ★ {lead.leadScore}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {stageLeads.length === 0 && (
+                    <div className="h-24 border border-dashed rounded-lg flex items-center justify-center text-muted-foreground/30 text-xs italic">
+                      No leads here
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add Lead Modal */}
       <SlideOver
@@ -466,6 +664,17 @@ export default function LeadsPage() {
                 <option value="Retainer">Retainer</option>
               </select>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Assigned / Attended Person</label>
+            <select name="assignedToId" className="w-full p-2 border rounded-md text-sm bg-background text-foreground">
+              <option value="">Select Staff...</option>
+              {staff.map((u: any) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.role.replace('_', ' ')})
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Notes</label>
@@ -590,16 +799,34 @@ export default function LeadsPage() {
             {/* Assignment Info */}
             <div className="space-y-3">
               <h3 className="font-semibold border-b pb-2">Assignment</h3>
-              <div className="text-sm">
-                <div className="text-muted-foreground mb-1">Assigned To</div>
-                <div className="font-medium flex items-center gap-2">
-                  {selectedLead.assignedTo ? (
-                    <>
-                      <Avatar name={selectedLead.assignedTo.name} size="sm" />
-                      {selectedLead.assignedTo.name}
-                    </>
-                  ) : "-"}
-                </div>
+              <div className="text-sm space-y-2">
+                <div className="text-muted-foreground text-xs uppercase tracking-wider">Assigned To</div>
+                <select
+                  className="w-full p-2 border rounded-md text-sm bg-background text-foreground"
+                  value={selectedLead.assignedToId || ""}
+                  onChange={async (e) => {
+                    const val = e.target.value || null;
+                    await fetch(`/api/leads/${selectedLead.id}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ assignedToId: val }),
+                    });
+                    // Refresh current lead details and leads list
+                    const res = await fetch(`/api/leads/${selectedLead.id}`);
+                    const json = await res.json();
+                    if (json.data) {
+                      setSelectedLead(json.data);
+                    }
+                    fetchLeads();
+                  }}
+                >
+                  <option value="">Unassigned</option>
+                  {staff.map((u: any) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.role.replace('_', ' ')})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -740,6 +967,211 @@ export default function LeadsPage() {
         confirmName={session?.user?.name || "Admin"}
         actionLabel="Yes, Delete Lead"
       />
+
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-[#1b4d3e] text-white py-3 px-6 rounded-full shadow-2xl z-50 flex items-center gap-6 border border-emerald-800 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <span className="text-sm font-semibold">
+            {selectedIds.size} {selectedIds.size === 1 ? "lead" : "leads"} selected
+          </span>
+          <div className="h-4 w-px bg-emerald-700/60" />
+          <div className="flex items-center gap-4">
+            {/* Bulk Assign */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-emerald-300 font-medium">Assign:</span>
+              <select
+                className="bg-emerald-900 border border-emerald-700 text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-white"
+                onChange={async (e) => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  const res = await fetch("/api/leads/bulk", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      ids: Array.from(selectedIds),
+                      data: { assignedToId: val === "unassigned" ? null : val }
+                    })
+                  });
+                  if (res.ok) {
+                    setSelectedIds(new Set());
+                    fetchLeads();
+                  }
+                  e.target.value = ""; // reset
+                }}
+              >
+                <option value="">Choose Staff...</option>
+                <option value="unassigned">Unassigned</option>
+                {staff.map((u: any) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Bulk Stage */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-emerald-300 font-medium">Stage:</span>
+              <select
+                className="bg-emerald-900 border border-emerald-700 text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-white"
+                onChange={async (e) => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  const res = await fetch("/api/leads/bulk", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      ids: Array.from(selectedIds),
+                      data: { stage: val }
+                    })
+                  });
+                  if (res.ok) {
+                    setSelectedIds(new Set());
+                    fetchLeads();
+                  }
+                  e.target.value = ""; // reset
+                }}
+              >
+                <option value="">Move to...</option>
+                <option value="NEW">New</option>
+                <option value="CONTACTED">Contacted</option>
+                <option value="QUALIFIED">Qualified</option>
+                <option value="CONVERTED">Converted</option>
+                <option value="LOST">Lost</option>
+              </select>
+            </div>
+
+            <div className="h-4 w-px bg-emerald-700/60" />
+
+            {/* Bulk Delete */}
+            <button
+              className="text-xs font-bold text-red-300 hover:text-red-200 transition-colors py-1 px-2 hover:bg-red-950/40 rounded-md"
+              onClick={async () => {
+                if (confirm(`Are you sure you want to delete ${selectedIds.size} selected leads?`)) {
+                  const res = await fetch("/api/leads/bulk", {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ids: Array.from(selectedIds) })
+                  });
+                  if (res.ok) {
+                    setSelectedIds(new Set());
+                    fetchLeads();
+                  }
+                }
+              }}
+            >
+              Delete
+            </button>
+             <button
+              className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Lead Pipeline Config SlideOver */}
+      <SlideOver
+        open={isPipelineConfigOpen}
+        onClose={() => setIsPipelineConfigOpen(false)}
+        title="Lead Pipeline Configuration"
+      >
+        <div className="space-y-6 pt-4">
+          <div className="text-xs text-muted-foreground">
+            Configure custom operational lead source metrics and pipeline status stages. Settings are persisted in your local vault space.
+          </div>
+
+          {/* Sources Section */}
+          <div className="space-y-3 bg-muted/20 p-4 border rounded-xl">
+            <div className="text-xs font-bold text-[#1b4d3e] uppercase tracking-wider">Custom Lead Sources</div>
+            
+            <div className="flex gap-2">
+              <input
+                value={newCustomSource}
+                onChange={(e) => setNewCustomSource(e.target.value)}
+                placeholder="e.g. Partner Reference"
+                className="flex-1 p-2 border rounded text-xs bg-background"
+              />
+              <button
+                onClick={() => {
+                  if (!newCustomSource.trim()) return;
+                  const updated = [...customSources, newCustomSource.trim()];
+                  setCustomSources(updated);
+                  localStorage.setItem("leads_custom_sources", JSON.stringify(updated));
+                  setNewCustomSource("");
+                }}
+                className="px-3 py-2 bg-[#1b4d3e] text-white text-xs font-semibold rounded hover:bg-emerald-950 transition-colors"
+              >
+                Add
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 pt-2">
+              {customSources.map((src, i) => (
+                <span key={i} className="flex items-center gap-1.5 px-2.5 py-1 bg-background border rounded-full text-xs font-medium text-[#1b4d3e]">
+                  {src}
+                  <button
+                    onClick={() => {
+                      const updated = customSources.filter((_, idx) => idx !== i);
+                      setCustomSources(updated);
+                      localStorage.setItem("leads_custom_sources", JSON.stringify(updated));
+                    }}
+                    className="text-red-500 font-bold hover:text-red-700 text-[10px]"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Stages Section */}
+          <div className="space-y-3 bg-muted/20 p-4 border rounded-xl">
+            <div className="text-xs font-bold text-[#1b4d3e] uppercase tracking-wider">Custom Pipeline Stages</div>
+            
+            <div className="flex gap-2">
+              <input
+                value={newCustomStage}
+                onChange={(e) => setNewCustomStage(e.target.value.toUpperCase())}
+                placeholder="e.g. DRAFTING"
+                className="flex-1 p-2 border rounded text-xs bg-background uppercase font-mono"
+              />
+              <button
+                onClick={() => {
+                  if (!newCustomStage.trim()) return;
+                  const updated = [...customStages, newCustomStage.trim().toUpperCase()];
+                  setCustomStages(updated);
+                  localStorage.setItem("leads_custom_stages", JSON.stringify(updated));
+                  setNewCustomStage("");
+                }}
+                className="px-3 py-2 bg-[#1b4d3e] text-white text-xs font-semibold rounded hover:bg-emerald-950 transition-colors"
+              >
+                Add
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 pt-2">
+              {customStages.map((stage, i) => (
+                <span key={i} className="flex items-center gap-1.5 px-2.5 py-1 bg-background border rounded-full text-xs font-mono font-bold text-[#1b4d3e]">
+                  {stage}
+                  <button
+                    onClick={() => {
+                      const updated = customStages.filter((_, idx) => idx !== i);
+                      setCustomStages(updated);
+                      localStorage.setItem("leads_custom_stages", JSON.stringify(updated));
+                    }}
+                    className="text-red-500 font-bold hover:text-red-700 text-[10px]"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </SlideOver>
+
     </div>
   );
 }
+
