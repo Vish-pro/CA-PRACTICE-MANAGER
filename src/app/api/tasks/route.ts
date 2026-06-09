@@ -108,6 +108,31 @@ export async function POST(request: Request) {
 
     // Generate Task ID transaction
     const task = await prisma.$transaction(async (tx) => {
+      // 1. Relational validation: selected service must match the selected category
+      if (body.serviceId) {
+        const service = await tx.service.findUnique({
+          where: { id: body.serviceId }
+        });
+        if (service && body.category && service.category.toLowerCase() !== body.category.toLowerCase()) {
+          throw new Error('Relational Validation Failed: Selected Service does not belong to the selected Category/Department');
+        }
+      }
+
+      let description = body.description;
+      if (body.status === 'Billing_Pending') {
+        const tag = "\n[requires_invoice_generation=true]";
+        if (description && !description.includes(tag)) {
+          description = description + tag;
+        } else if (!description) {
+          description = tag;
+        }
+      }
+
+      let assignedToId = body.assignedToId;
+      if (body.status === 'Review_Rejected' && !assignedToId) {
+        assignedToId = session.user.id;
+      }
+
       // Fetch service SOP steps if serviceId is provided
       const sops = body.serviceId ? await tx.serviceSOP.findMany({
         where: { serviceId: body.serviceId },
@@ -131,12 +156,12 @@ export async function POST(request: Request) {
             data: {
               taskNumber: counter.value,
               title: `${step.title}: ${step.description ? (step.description.length > 50 ? step.description.substring(0, 50) + '...' : step.description) : 'Perform Service Action'} - ${body.title}`,
-              description: step.description || body.description,
+              description: step.description || description,
               status: body.status || 'PENDING',
               priority: body.priority || 'MEDIUM',
               dueDate: body.dueDate ? new Date(body.dueDate) : null,
               createdById: session.user.id,
-              assignedToId: body.assignedToId,
+              assignedToId: assignedToId,
               reviewerId: body.reviewerId,
               clientId: body.clientId,
               serviceId: body.serviceId,
@@ -164,12 +189,12 @@ export async function POST(request: Request) {
           data: {
             taskNumber: counter.value,
             title: body.title,
-            description: body.description,
+            description: description,
             status: body.status || 'PENDING',
             priority: body.priority || 'MEDIUM',
             dueDate: body.dueDate ? new Date(body.dueDate) : null,
             createdById: session.user.id,
-            assignedToId: body.assignedToId,
+            assignedToId: assignedToId,
             reviewerId: body.reviewerId,
             clientId: body.clientId,
             serviceId: body.serviceId,
@@ -184,9 +209,17 @@ export async function POST(request: Request) {
       }
     });
 
-    return NextResponse.json({ data: task });
-  } catch (error) {
+    const requiresInvoice = task.description?.includes('[requires_invoice_generation=true]') || task.status === 'Billing_Pending';
+
+    return NextResponse.json({ 
+      data: {
+        ...task,
+        requires_invoice_generation: requiresInvoice
+      }
+    });
+  } catch (error: any) {
     console.error('Failed to create task', error);
-    return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });
+    const status = error.message?.includes('Relational Validation Failed') ? 400 : 500;
+    return NextResponse.json({ error: error.message || 'Failed to create task' }, { status });
   }
 }

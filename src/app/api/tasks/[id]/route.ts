@@ -24,7 +24,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     if (!task) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    return NextResponse.json({ data: task });
+    const requiresInvoice = task.description?.includes('[requires_invoice_generation=true]') || task.status === 'Billing_Pending';
+
+    return NextResponse.json({ 
+      data: {
+        ...task,
+        requires_invoice_generation: requiresInvoice
+      } 
+    });
   } catch (error) {
     console.error('Failed to fetch task', error);
     return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
@@ -53,26 +60,48 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     // Detect status change to track statusChangedAt accurately
     const existing = await prisma.task.findUnique({
       where: { id: resolvedParams.id },
-      select: { status: true },
+      select: { status: true, assignedToId: true, createdById: true, description: true },
     });
     const statusChanged = body.status !== undefined && existing?.status !== body.status;
+
+    let assignedToId = body.assignedToId;
+    if (body.status === 'Review_Rejected') {
+      assignedToId = existing?.assignedToId || existing?.createdById || session.user.id;
+    }
+
+    let description = body.description !== undefined ? body.description : existing?.description;
+    if (body.status === 'Billing_Pending') {
+      const tag = "\n[requires_invoice_generation=true]";
+      if (description && !description.includes(tag)) {
+        description = (description || "") + tag;
+      } else if (!description) {
+        description = tag;
+      }
+    }
 
     const task = await prisma.task.update({
       where: { id: resolvedParams.id },
       data: {
         title: body.title,
-        description: body.description,
+        description: description,
         status: body.status,
         priority: body.priority,
         dueDate: dueDate,
-        assignedToId: body.assignedToId,
+        assignedToId: assignedToId,
         reviewerId: body.reviewerId,
         completedAt: body.status === 'COMPLETED' ? new Date() : null,
         statusChangedAt: statusChanged ? new Date() : undefined,
       }
     });
 
-    return NextResponse.json({ data: task });
+    const requiresInvoice = task.description?.includes('[requires_invoice_generation=true]') || task.status === 'Billing_Pending';
+
+    return NextResponse.json({ 
+      data: {
+        ...task,
+        requires_invoice_generation: requiresInvoice
+      }
+    });
   } catch (error) {
     console.error('Failed to update task', error);
     return NextResponse.json({ error: 'Failed to update task' }, { status: 500 });
