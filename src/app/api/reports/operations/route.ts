@@ -28,6 +28,9 @@ export async function GET() {
         assignedToId: true,
         assignedTo: { select: { id: true, name: true } },
         stage: true,
+        businessName: true,
+        dealValue: true,
+        createdAt: true
       },
     });
 
@@ -231,6 +234,64 @@ export async function GET() {
 
     const categoryWorkload = Object.values(workloadMap).sort((a, b) => b.total - a.total);
 
+    // Urgency Workload (filings due in 2 days, 5 days, 7+ days)
+    const urgencyMap: Record<string, {
+      category: string;
+      'Due 2d': number; 'Due 5d': number; 'Due 7d': number; '7d+': number; total: number;
+    }> = {};
+
+    tasks
+      .filter(t => openStatuses.includes(t.status))
+      .forEach(t => {
+        const cat = t.service?.category || 'Uncategorised';
+        if (!urgencyMap[cat]) {
+          urgencyMap[cat] = { category: cat, 'Due 2d': 0, 'Due 5d': 0, 'Due 7d': 0, '7d+': 0, total: 0 };
+        }
+        
+        urgencyMap[cat].total++;
+        if (!t.dueDate) {
+          urgencyMap[cat]['7d+']++;
+        } else {
+          const diffMs = new Date(t.dueDate).getTime() - now.getTime();
+          const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+          
+          if (daysRemaining <= 2) {
+            urgencyMap[cat]['Due 2d']++;
+          } else if (daysRemaining <= 5) {
+            urgencyMap[cat]['Due 5d']++;
+          } else if (daysRemaining <= 7) {
+            urgencyMap[cat]['Due 7d']++;
+          } else {
+            urgencyMap[cat]['7d+']++;
+          }
+        }
+      });
+    const urgencyWorkload = Object.values(urgencyMap).sort((a, b) => b.total - a.total);
+
+    // Unassigned Lists for Drill-down Drawer
+    const unassignedTasksList = tasks
+      .filter(t => !t.assignedToId && openStatuses.includes(t.status))
+      .map(t => ({
+        id: t.id,
+        title: t.title,
+        category: t.service?.category || 'General Practice',
+        clientName: t.client?.companyName || 'Internal Firm',
+        createdAt: t.createdAt.toISOString()
+      }));
+
+    const unassignedLeadsList = leads
+      .filter(l => !l.assignedToId && !['CONVERTED', 'LOST'].includes(l.stage))
+      .map(l => ({
+        id: l.id,
+        businessName: l.businessName || 'Unnamed Prospect',
+        dealValue: l.dealValue || 0,
+        stage: l.stage,
+        createdAt: l.createdAt ? l.createdAt.toISOString() : now.toISOString()
+      }));
+
+    // Pending Partner Review count
+    const pendingReviewTasks = tasks.filter(t => t.status === 'REVIEW').length;
+
     // ── KPIs ─────────────────────────────────────────────────────────────────
     const totalActiveTasks  = tasks.filter(t => activeStatuses.includes(t.status)).length;
     const totalOverdueTasks = tasks.filter(t => t.status === 'OVERDUE').length;
@@ -255,6 +316,7 @@ export async function GET() {
           overallOnTimeRate,
           unassignedTasks,
           unassignedLeads,
+          pendingReviewTasks,
         },
         teamCapacity,
         tatByCategory,
@@ -262,6 +324,9 @@ export async function GET() {
         staleSummary,
         onTimeByStaff,
         categoryWorkload,
+        urgencyWorkload,
+        unassignedTasksList,
+        unassignedLeadsList,
       },
     });
 
