@@ -20,6 +20,12 @@ const statusMap: Record<string, { bg: string; text: string; label: string }> = {
   QUALIFIED: { bg: "bg-purple-100", text: "text-purple-700", label: "Qualified" },
   CONVERTED: { bg: "bg-green-100", text: "text-green-700", label: "Converted" },
   LOST: { bg: "bg-red-100", text: "text-red-600", label: "Lost" },
+  // Advanced CA Practice Sub-statuses
+  REVIEW_REJECTED: { bg: "bg-[#fee2e2]", text: "text-[#991b1b]", label: "Review Rejected" },
+  PEER_REVIEW: { bg: "bg-[#dbeafe]", text: "text-[#1e40af]", label: "Peer Review Pending" },
+  MANAGEMENT_SIGNOFF: { bg: "bg-[#fef3c7]", text: "text-[#92400e]", label: "Management Sign-off Awaited" },
+  PORTAL_GLITCH: { bg: "bg-[#ffedd5]", text: "text-[#c2410c]", label: "Govt Portal Down" },
+  BILLING_PENDING: { bg: "bg-[#d1fae5]", text: "text-[#065f46]", label: "Filed - Billing Pending" },
 }
 
 export function StatusBadge({ status, className, ...props }: StatusBadgeProps) {

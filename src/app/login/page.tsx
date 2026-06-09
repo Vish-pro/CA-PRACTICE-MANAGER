@@ -22,6 +22,9 @@ function LoginForm() {
   const [csrfToken, setCsrfToken] = useState<string | undefined>("");
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("prabandh_login_timestamp");
+    }
     async function fetchCsrfToken() {
       const token = await getCsrfToken();
       setCsrfToken(token);
