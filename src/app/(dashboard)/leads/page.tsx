@@ -19,7 +19,7 @@ import { format } from "date-fns";
 export default function LeadsPage() {
   const { data: session } = useSession();
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [activeStatCard, setActiveStatCard] = useState<string>("ALL");
+  const [activeStatCard, setActiveStatCard] = useState<string>("OPEN");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
@@ -40,6 +40,10 @@ export default function LeadsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isConvertOpen, setIsConvertOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<any>(null);
+
+  // Edit mode
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
 
   // References for Convert Modal dropdowns
   const [staff, setStaff] = useState<any[]>([]);
@@ -197,6 +201,20 @@ export default function LeadsPage() {
     fetchLeads();
   };
 
+  const handleEditSave = async () => {
+    if (!selectedLead) return;
+    await fetch(`/api/leads/${selectedLead.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editForm),
+    });
+    const res = await fetch(`/api/leads/${selectedLead.id}`);
+    const json = await res.json();
+    if (json.data) setSelectedLead(json.data);
+    setIsEditMode(false);
+    fetchLeads();
+  };
+
 
 
   const handleConvertClient = async (e: React.FormEvent) => {
@@ -235,17 +253,6 @@ export default function LeadsPage() {
     }
   };
 
-  const calculateScoreColor = (score: number) => {
-    if (score < 30) return "bg-red-100 text-red-700";
-    if (score < 70) return "bg-orange-100 text-orange-700";
-    return "bg-green-100 text-green-700";
-  };
-
-  const calculateScoreProgressColor = (score: number) => {
-    if (score < 30) return "bg-red-500";
-    if (score < 70) return "bg-orange-500";
-    return "bg-green-500";
-  };
 
   const columns: ColumnDef<any>[] = [
     {
@@ -280,22 +287,6 @@ export default function LeadsPage() {
       header: "Contact No",
       accessorKey: "contactPhone",
       cell: (row) => row.contactPhone || "-"
-    },
-    {
-      header: "Lead Score",
-      cell: (row) => (
-        <div className="w-16" title="Lead Score: 0–100 qualification score. Red = cold, Orange = warm, Green = hot.">
-          <div className={cn("inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-bold mb-1", calculateScoreColor(row.leadScore))}>
-            {row.leadScore}
-          </div>
-          <div className="w-full bg-muted rounded-full h-1">
-            <div
-              className={cn("h-1 rounded-full", calculateScoreProgressColor(row.leadScore))}
-              style={{ width: `${row.leadScore}%` }}
-            />
-          </div>
-        </div>
-      )
     },
     {
       header: "Stage",
@@ -425,7 +416,7 @@ export default function LeadsPage() {
                   <div>
                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Stage</div>
                     <div className="space-y-1">
-                      {["NEW", "CONTACTED", "QUALIFIED", "CONVERTED", "LOST"].map(s => (
+                      {customStages.map(s => (
                         <label key={s} className="flex items-center gap-2 text-sm cursor-pointer hover:text-foreground">
                           <input
                             type="checkbox"
@@ -446,7 +437,7 @@ export default function LeadsPage() {
                   <div>
                     <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Source</div>
                     <div className="space-y-1">
-                      {["Website", "Referral", "Walk-in", "Social Media", "Cold Call", "Other"].map(s => (
+                      {customSources.map(s => (
                         <label key={s} className="flex items-center gap-2 text-sm cursor-pointer hover:text-foreground">
                           <input
                             type="checkbox"
@@ -566,12 +557,6 @@ export default function LeadsPage() {
                         <span className="font-bold text-foreground">
                           {lead.dealValue ? `₹${lead.dealValue.toLocaleString()}` : "—"}
                         </span>
-                        <span className={cn(
-                          "px-1.5 py-0.5 rounded text-[10px] font-bold",
-                          calculateScoreColor(lead.leadScore)
-                        )}>
-                          ★ {lead.leadScore}
-                        </span>
                       </div>
                     </div>
                   ))}
@@ -690,15 +675,40 @@ export default function LeadsPage() {
       {/* Lead Detail Drawer */}
       <SlideOver
         open={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
+        onClose={() => { setIsDetailOpen(false); setIsEditMode(false); }}
         title=""
       >
         {selectedLead && (
           <div className="space-y-6 pb-10">
             {/* Header */}
-            <div>
-              <h2 className="text-2xl font-bold mb-2">{selectedLead.businessName}</h2>
-              <StatusBadge status={selectedLead.stage} />
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">
+                  {isEditMode ? (
+                    <input
+                      className="text-2xl font-bold border-b border-primary bg-transparent outline-none w-full"
+                      value={editForm.businessName ?? selectedLead.businessName}
+                      onChange={e => setEditForm((f: any) => ({ ...f, businessName: e.target.value }))}
+                    />
+                  ) : selectedLead.businessName}
+                </h2>
+                <StatusBadge status={selectedLead.stage} />
+              </div>
+              {!isEditMode ? (
+                <button
+                  onClick={() => { setIsEditMode(true); setEditForm({}); }}
+                  className="shrink-0 px-3 py-1.5 border rounded-md text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Edit Lead
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsEditMode(false)}
+                  className="shrink-0 px-3 py-1.5 border rounded-md text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
 
             {/* Lead Info */}
@@ -709,40 +719,45 @@ export default function LeadsPage() {
               </div>
               <div>
                 <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">Source</div>
-                <div className="font-medium">{selectedLead.source || "-"}</div>
+                {isEditMode ? (
+                  <select
+                    className="w-full p-1.5 border rounded text-sm bg-background"
+                    value={editForm.source ?? selectedLead.source ?? ""}
+                    onChange={e => setEditForm((f: any) => ({ ...f, source: e.target.value }))}
+                  >
+                    {customSources.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                ) : (
+                  <div className="font-medium">{selectedLead.source || "-"}</div>
+                )}
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">Legal Name</div>
+                {isEditMode ? (
+                  <input
+                    className="w-full p-1.5 border rounded text-sm bg-background"
+                    value={editForm.legalName ?? selectedLead.legalName ?? ""}
+                    onChange={e => setEditForm((f: any) => ({ ...f, legalName: e.target.value }))}
+                  />
+                ) : (
+                  <div className="font-medium">{selectedLead.legalName || "-"}</div>
+                )}
               </div>
               <div>
                 <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">Entity Type</div>
-                <div className="font-medium">{selectedLead.businessEntity || "-"}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">Lead Score</div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    defaultValue={selectedLead.leadScore}
-                    className="w-20 p-1.5 border rounded-md text-sm text-center font-bold"
-                    onBlur={async (e) => {
-                      const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
-                      await fetch(`/api/leads/${selectedLead.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ leadScore: val }),
-                      });
-                      handleRowClick(selectedLead);
-                      fetchLeads();
-                    }}
-                  />
-                  <span className="text-xs text-muted-foreground">/ 100 — qualification score (0 = cold, 100 = hot)</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-1.5 mt-2">
-                  <div
-                    className={cn("h-1.5 rounded-full", calculateScoreProgressColor(selectedLead.leadScore))}
-                    style={{ width: `${selectedLead.leadScore}%` }}
-                  />
-                </div>
+                {isEditMode ? (
+                  <select
+                    className="w-full p-1.5 border rounded text-sm bg-background"
+                    value={editForm.businessEntity ?? selectedLead.businessEntity ?? ""}
+                    onChange={e => setEditForm((f: any) => ({ ...f, businessEntity: e.target.value }))}
+                  >
+                    {["Proprietorship","Partnership","LLP","Private Limited","Public Limited","Trust","HUF","Other"].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="font-medium">{selectedLead.businessEntity || "-"}</div>
+                )}
               </div>
             </div>
 
@@ -752,15 +767,40 @@ export default function LeadsPage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-muted-foreground mb-1">Person</div>
-                  <div className="font-medium">{selectedLead.contactName || "-"}</div>
+                  {isEditMode ? (
+                    <input
+                      className="w-full p-1.5 border rounded text-sm bg-background"
+                      value={editForm.contactName ?? selectedLead.contactName ?? ""}
+                      onChange={e => setEditForm((f: any) => ({ ...f, contactName: e.target.value }))}
+                    />
+                  ) : (
+                    <div className="font-medium">{selectedLead.contactName || "-"}</div>
+                  )}
                 </div>
                 <div>
                   <div className="text-muted-foreground mb-1">Phone</div>
-                  <div className="font-medium">{selectedLead.contactPhone || "-"}</div>
+                  {isEditMode ? (
+                    <input
+                      className="w-full p-1.5 border rounded text-sm bg-background"
+                      value={editForm.contactPhone ?? selectedLead.contactPhone ?? ""}
+                      onChange={e => setEditForm((f: any) => ({ ...f, contactPhone: e.target.value }))}
+                    />
+                  ) : (
+                    <div className="font-medium">{selectedLead.contactPhone || "-"}</div>
+                  )}
                 </div>
                 <div className="col-span-2">
                   <div className="text-muted-foreground mb-1">Email</div>
-                  <div className="font-medium">{selectedLead.contactEmail || "-"}</div>
+                  {isEditMode ? (
+                    <input
+                      type="email"
+                      className="w-full p-1.5 border rounded text-sm bg-background"
+                      value={editForm.contactEmail ?? selectedLead.contactEmail ?? ""}
+                      onChange={e => setEditForm((f: any) => ({ ...f, contactEmail: e.target.value }))}
+                    />
+                  ) : (
+                    <div className="font-medium">{selectedLead.contactEmail || "-"}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -771,11 +811,33 @@ export default function LeadsPage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-muted-foreground mb-1">Deal Value</div>
-                  <div className="font-medium">{selectedLead.dealValue ? `₹${selectedLead.dealValue.toLocaleString()}` : "-"}</div>
+                  {isEditMode ? (
+                    <input
+                      type="number"
+                      className="w-full p-1.5 border rounded text-sm bg-background"
+                      value={editForm.dealValue ?? selectedLead.dealValue ?? ""}
+                      onChange={e => setEditForm((f: any) => ({ ...f, dealValue: e.target.value ? Number(e.target.value) : null }))}
+                    />
+                  ) : (
+                    <div className="font-medium">{selectedLead.dealValue ? `₹${selectedLead.dealValue.toLocaleString()}` : "-"}</div>
+                  )}
                 </div>
                 <div>
                   <div className="text-muted-foreground mb-1">Deal Type</div>
-                  <div className="font-medium">{selectedLead.dealType || "-"}</div>
+                  {isEditMode ? (
+                    <select
+                      className="w-full p-1.5 border rounded text-sm bg-background"
+                      value={editForm.dealType ?? selectedLead.dealType ?? ""}
+                      onChange={e => setEditForm((f: any) => ({ ...f, dealType: e.target.value }))}
+                    >
+                      <option value="">Select...</option>
+                      <option value="One-time">One-time</option>
+                      <option value="Recurring">Recurring</option>
+                      <option value="Retainer">Retainer</option>
+                    </select>
+                  ) : (
+                    <div className="font-medium">{selectedLead.dealType || "-"}</div>
+                  )}
                 </div>
                 <div className="col-span-2">
                   <div className="text-muted-foreground mb-1">Stage</div>
@@ -785,10 +847,9 @@ export default function LeadsPage() {
                     onChange={(e) => handleUpdateStage(e.target.value)}
                     disabled={selectedLead.stage === 'CONVERTED' || selectedLead.stage === 'LOST'}
                   >
-                    <option value="NEW">New</option>
-                    <option value="CONTACTED">Contacted</option>
-                    <option value="QUALIFIED">Qualified</option>
-                    {/* Show current stage as read-only label if already terminal */}
+                    {customStages.filter(s => !["CONVERTED","LOST"].includes(s)).map(s => (
+                      <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+                    ))}
                     {selectedLead.stage === 'CONVERTED' && <option value="CONVERTED" disabled>Converted (via Convert button)</option>}
                     {selectedLead.stage === 'LOST' && <option value="LOST" disabled>Lost (use Mark as Lost button)</option>}
                   </select>
@@ -801,39 +862,54 @@ export default function LeadsPage() {
               <h3 className="font-semibold border-b pb-2">Assignment</h3>
               <div className="text-sm space-y-2">
                 <div className="text-muted-foreground text-xs uppercase tracking-wider">Assigned To</div>
-                <select
-                  className="w-full p-2 border rounded-md text-sm bg-background text-foreground"
-                  value={selectedLead.assignedToId || ""}
-                  onChange={async (e) => {
-                    const val = e.target.value || null;
-                    await fetch(`/api/leads/${selectedLead.id}`, {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ assignedToId: val }),
-                    });
-                    // Refresh current lead details and leads list
-                    const res = await fetch(`/api/leads/${selectedLead.id}`);
-                    const json = await res.json();
-                    if (json.data) {
-                      setSelectedLead(json.data);
-                    }
-                    fetchLeads();
-                  }}
-                >
-                  <option value="">Unassigned</option>
-                  {staff.map((u: any) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.role.replace('_', ' ')})
-                    </option>
-                  ))}
-                </select>
+                {isEditMode ? (
+                  <select
+                    className="w-full p-1.5 border rounded text-sm bg-background"
+                    value={editForm.assignedToId ?? selectedLead.assignedToId ?? ""}
+                    onChange={e => setEditForm((f: any) => ({ ...f, assignedToId: e.target.value || null }))}
+                  >
+                    <option value="">Unassigned</option>
+                    {staff.map((u: any) => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.role.replace('_', ' ')})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    className="w-full p-2 border rounded-md text-sm bg-background text-foreground"
+                    value={selectedLead.assignedToId || ""}
+                    onChange={async (e) => {
+                      const val = e.target.value || null;
+                      await fetch(`/api/leads/${selectedLead.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ assignedToId: val }),
+                      });
+                      const res = await fetch(`/api/leads/${selectedLead.id}`);
+                      const json = await res.json();
+                      if (json.data) setSelectedLead(json.data);
+                      fetchLeads();
+                    }}
+                  >
+                    <option value="">Unassigned</option>
+                    {staff.map((u: any) => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.role.replace('_', ' ')})</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
             {/* Notes */}
             <div className="space-y-3">
               <h3 className="font-semibold border-b pb-2">Notes</h3>
-              {selectedLead.notes ? (
+              {isEditMode ? (
+                <textarea
+                  rows={4}
+                  className="w-full p-2 border rounded-md text-sm bg-background"
+                  value={editForm.notes ?? selectedLead.notes ?? ""}
+                  onChange={e => setEditForm((f: any) => ({ ...f, notes: e.target.value }))}
+                />
+              ) : selectedLead.notes ? (
                 <div className="p-3 bg-muted/30 border rounded-md text-sm whitespace-pre-wrap">
                   {selectedLead.notes}
                 </div>
@@ -844,28 +920,39 @@ export default function LeadsPage() {
 
             {/* Actions */}
             <div className="pt-6 mt-6 border-t flex flex-col gap-3">
-              {selectedLead.stage !== "CONVERTED" && (
+              {isEditMode ? (
                 <button
-                  onClick={() => setIsConvertOpen(true)}
-                  className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"
+                  onClick={handleEditSave}
+                  className="w-full py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-colors"
                 >
-                  Convert to Client
+                  Save Changes
                 </button>
+              ) : (
+                <>
+                  {selectedLead.stage !== "CONVERTED" && (
+                    <button
+                      onClick={() => setIsConvertOpen(true)}
+                      className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"
+                    >
+                      Convert to Client
+                    </button>
+                  )}
+                  {selectedLead.stage !== "LOST" && selectedLead.stage !== "CONVERTED" && (
+                    <button
+                      onClick={() => handleUpdateStage("LOST")}
+                      className="w-full py-2.5 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-sm font-medium transition-colors"
+                    >
+                      Mark as Lost
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsDeleteConfirmOpen(true)}
+                    className="w-full py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-sm font-medium transition-colors mt-4"
+                  >
+                    Delete Lead
+                  </button>
+                </>
               )}
-              {selectedLead.stage !== "LOST" && selectedLead.stage !== "CONVERTED" && (
-                <button
-                  onClick={() => handleUpdateStage("LOST")}
-                  className="w-full py-2.5 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-md text-sm font-medium transition-colors"
-                >
-                  Mark as Lost
-                </button>
-              )}
-              <button
-                onClick={() => setIsDeleteConfirmOpen(true)}
-                className="w-full py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-sm font-medium transition-colors mt-4"
-              >
-                Delete Lead
-              </button>
             </div>
           </div>
         )}

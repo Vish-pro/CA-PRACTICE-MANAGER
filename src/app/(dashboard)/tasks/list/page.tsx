@@ -234,37 +234,49 @@ export default function TasksListPage() {
     setShowLogModal(true);
   };
 
-  const handleSaveTimesheetLog = () => {
+  const handleSaveTimesheetLog = async () => {
     if (!activeTimer) return;
-    
-    let empName = "Kunal Sen";
-    let empId = "ART2025-01";
-    if (userRole === "MANAGER") {
-      empName = "Neha Gupta";
-      empId = "MGR002";
-    } else if (userRole === "ADMIN" || userRole === "PARTNER" || userRole === "DIRECTOR") {
-      empName = "Vikramaditya Rao";
-      empId = "PAR001";
+
+    // Resolve the simulated employee from the DB (same mapping as the HR page)
+    let employee: any = null;
+    try {
+      const res = await fetch("/api/hr/employees");
+      const json = await res.json();
+      const emps: any[] = json.data || [];
+      if (userRole === "MANAGER") {
+        employee = emps.find(e => e.employmentType === "Manager") || emps[0];
+      } else if (userRole === "ADMIN" || userRole === "PARTNER" || userRole === "DIRECTOR" || userRole === "HR") {
+        employee = emps.find(e => e.employmentType === "Partner") || emps[0];
+      } else {
+        employee = emps.find(e => e.employmentType === "Article Assistant")
+          || emps.find(e => e.employmentType === "Paid Assistant")
+          || emps[0];
+      }
+    } catch { /* fall through to error toast below */ }
+
+    if (!employee) {
+      toast.error("Could not resolve your employee profile — timesheet not saved.");
+      return;
     }
 
-    const newLog = {
-      id: Math.random().toString(36).substring(7),
-      employeeId: empId,
-      employeeName: empName,
-      date: new Date().toISOString().split("T")[0],
-      taskId: activeTimer.taskId,
-      taskTitle: activeTimer.taskTitle,
-      clientName: activeTimer.clientName,
-      hours: parseFloat(timesheetHours),
-      description: timesheetNotes,
-      status: "DRAFT",
-      isManual: false
-    };
+    const res = await fetch("/api/hr/timesheets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: employee.id,
+        taskTitle: activeTimer.taskTitle,
+        clientName: activeTimer.clientName,
+        hours: parseFloat(timesheetHours),
+        description: timesheetNotes,
+        status: "DRAFT",
+        isManual: false,
+      }),
+    });
 
-    const existingLogs = localStorage.getItem("ca_daily_timesheets");
-    const logs = existingLogs ? JSON.parse(existingLogs) : [];
-    logs.push(newLog);
-    localStorage.setItem("ca_daily_timesheets", JSON.stringify(logs));
+    if (!res.ok) {
+      toast.error("Failed to save timesheet log");
+      return;
+    }
 
     localStorage.removeItem("ca_active_timer");
     setActiveTimer(null);

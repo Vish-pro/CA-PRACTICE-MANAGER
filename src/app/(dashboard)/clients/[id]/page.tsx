@@ -6,7 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
-import { Phone, Mail, Building2, MapPin, Hash, Users, Activity, Plus, Trash2 } from "lucide-react";
+import { Phone, Mail, Building2, MapPin, Hash, Users, Activity, Plus, Trash2, CheckCircle2, Clock, AlertTriangle, ChevronsRight, Eye } from "lucide-react";
 import { SlideOver } from "@/components/ui/slide-over";
 
 export default function ClientDetailPage() {
@@ -28,6 +28,13 @@ export default function ClientDetailPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [staff, setStaff] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+
+  // Invoice State
+  const [clientInvoices, setClientInvoices] = useState<any[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [paymentTarget, setPaymentTarget] = useState<any | null>(null);
+  const [paymentForm, setPaymentForm] = useState({ amount: 0, paymentDate: "", method: "BANK_TRANSFER", reference: "" });
+  const [viewInvoice, setViewInvoice] = useState<any | null>(null);
 
   const tabs = [
     "Overview", "Tasks", "Services", "Documents", "DSC", "Licenses", "Passwords", "Invoices", "Notes"
@@ -110,7 +117,55 @@ export default function ClientDetailPage() {
       fetchClientServices();
       fetchAllServices();
     }
+    if (activeTab === "Invoices") {
+      fetchClientInvoices();
+    }
   }, [activeTab, id]);
+
+  const fetchClientInvoices = async () => {
+    setInvoicesLoading(true);
+    try {
+      const res  = await fetch(`/api/billing/invoices?clientId=${id}&limit=100`);
+      const json = await res.json();
+      if (json.data) setClientInvoices(json.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+
+  const handleRecordPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentTarget) return;
+    try {
+      const res = await fetch(`/api/billing/invoices/${paymentTarget.id}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(paymentForm),
+      });
+      if (!res.ok) throw new Error();
+      setPaymentTarget(null);
+      fetchClientInvoices();
+    } catch { console.error("Payment failed"); }
+  };
+
+  const handleConvertInvoice = async (inv: any) => {
+    if (!confirm(`Convert ${inv.invoiceNumber} to real invoice?`)) return;
+    const res = await fetch(`/api/billing/invoices/${inv.id}/convert`, { method: "POST" });
+    if (res.ok) fetchClientInvoices();
+  };
+
+  const fmtCurrency = (n: number) =>
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
+
+  const invStatusColors: Record<string, string> = {
+    PROFORMA: "bg-blue-100 text-blue-800",
+    UNPAID:   "bg-amber-100 text-amber-800",
+    PARTIAL:  "bg-orange-100 text-orange-800",
+    PAID:     "bg-green-100 text-green-800",
+    OVERDUE:  "bg-red-100 text-red-800",
+  };
 
   const handleAssignService = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -376,7 +431,84 @@ export default function ClientDetailPage() {
             </div>
           )}
 
-          {["Documents", "DSC", "Licenses", "Passwords", "Invoices", "Notes"].includes(activeTab) && (
+          {activeTab === "Invoices" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Invoices for {client.legalName || client.companyName}</h3>
+                <a href="/billing/invoices" className="text-xs text-[#1b4d3e] font-semibold hover:underline">
+                  Create Invoice →
+                </a>
+              </div>
+              {invoicesLoading ? (
+                <div className="py-12 text-center text-muted-foreground text-sm">Loading invoices…</div>
+              ) : clientInvoices.length === 0 ? (
+                <div className="py-12 text-center">
+                  <div className="text-muted-foreground italic text-sm">No invoices for this client yet.</div>
+                  <a href="/billing/invoices" className="mt-2 inline-block text-xs text-[#1b4d3e] font-semibold hover:underline">
+                    Go to Invoices →
+                  </a>
+                </div>
+              ) : (
+                <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-xs text-muted-foreground uppercase">
+                      <tr>
+                        <th className="px-4 py-3 text-left">Invoice #</th>
+                        <th className="px-4 py-3 text-left">Date</th>
+                        <th className="px-4 py-3 text-right">Amount</th>
+                        <th className="px-4 py-3 text-right">Paid</th>
+                        <th className="px-4 py-3 text-left">Status</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clientInvoices.map((inv: any) => (
+                        <tr key={inv.id} className="border-t hover:bg-muted/20 transition-colors">
+                          <td className="px-4 py-3 font-mono font-semibold text-[#1b4d3e] text-xs">{inv.invoiceNumber || "—"}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">
+                            {new Date(inv.issueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold">{fmtCurrency(inv.totalAmount)}</td>
+                          <td className="px-4 py-3 text-right text-xs text-muted-foreground">
+                            {inv.paidAmount > 0 ? fmtCurrency(inv.paidAmount) : "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${invStatusColors[inv.status] || "bg-gray-100 text-gray-800"}`}>
+                              {inv.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => setViewInvoice(inv)} className="p-1.5 rounded hover:bg-muted text-muted-foreground" title="View">
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              {inv.status === "PROFORMA" && (
+                                <button onClick={() => handleConvertInvoice(inv)}
+                                  className="px-2 py-1 text-[10px] font-medium rounded border border-blue-300 text-blue-700 hover:bg-blue-50">
+                                  Convert
+                                </button>
+                              )}
+                              {["UNPAID", "PARTIAL", "OVERDUE"].includes(inv.status) && (
+                                <button onClick={() => {
+                                  setPaymentTarget(inv);
+                                  setPaymentForm({ amount: inv.totalAmount - inv.paidAmount, paymentDate: new Date().toISOString().substring(0, 10), method: "BANK_TRANSFER", reference: "" });
+                                }}
+                                  className="px-2 py-1 text-[10px] font-medium rounded border border-green-300 text-green-700 hover:bg-green-50">
+                                  Pay
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {["Documents", "DSC", "Licenses", "Passwords", "Notes"].includes(activeTab) && (
             <div className="bg-card border rounded-xl p-8 shadow-sm min-h-[400px] flex items-center justify-center">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4">
@@ -542,6 +674,116 @@ export default function ClientDetailPage() {
           <button type="button" onClick={() => setIsEditOpen(false)} className="px-4 py-2 border rounded-md text-sm font-medium">Cancel</button>
           <button form="edit-client-form" type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium">Save Changes</button>
         </div>
+      </SlideOver>
+
+      {/* Record Payment SlideOver */}
+      <SlideOver open={!!paymentTarget} onClose={() => setPaymentTarget(null)} title="Record Payment">
+        {paymentTarget && (
+          <form onSubmit={handleRecordPayment} className="space-y-5">
+            <div className="bg-muted/40 rounded-xl p-4 space-y-1 text-sm">
+              <div className="font-semibold">{paymentTarget.invoiceNumber}</div>
+              <div className="flex justify-between mt-2">
+                <span className="text-muted-foreground">Invoice Total</span>
+                <span className="font-semibold">{fmtCurrency(paymentTarget.totalAmount)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span className="font-medium">Balance Due</span>
+                <span className="font-bold text-red-600">{fmtCurrency(paymentTarget.totalAmount - paymentTarget.paidAmount)}</span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Amount (₹) *</label>
+              <input required type="number" min="1" value={paymentForm.amount}
+                onChange={e => setPaymentForm(f => ({ ...f, amount: Number(e.target.value) }))}
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:ring-2 focus:ring-[#1b4d3e] outline-none" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Payment Date *</label>
+              <input required type="date" value={paymentForm.paymentDate}
+                onChange={e => setPaymentForm(f => ({ ...f, paymentDate: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:ring-2 focus:ring-[#1b4d3e] outline-none" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Method</label>
+              <select value={paymentForm.method} onChange={e => setPaymentForm(f => ({ ...f, method: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:ring-2 focus:ring-[#1b4d3e] outline-none">
+                {["BANK_TRANSFER", "CHEQUE", "CASH", "UPI", "NEFT", "RTGS", "IMPS"].map(m => (
+                  <option key={m} value={m}>{m.replace("_", " ")}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Reference / UTR</label>
+              <input type="text" value={paymentForm.reference}
+                onChange={e => setPaymentForm(f => ({ ...f, reference: e.target.value }))}
+                placeholder="Transaction ID, cheque no, etc."
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:ring-2 focus:ring-[#1b4d3e] outline-none" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setPaymentTarget(null)}
+                className="flex-1 py-2.5 rounded-xl border text-sm font-medium hover:bg-muted transition-colors">Cancel</button>
+              <button type="submit"
+                className="flex-1 py-2.5 rounded-xl bg-[#1b4d3e] text-white text-sm font-semibold hover:bg-[#163d31] transition-colors">Record Payment</button>
+            </div>
+          </form>
+        )}
+      </SlideOver>
+
+      {/* Invoice Detail SlideOver */}
+      <SlideOver open={!!viewInvoice} onClose={() => setViewInvoice(null)} title={viewInvoice?.invoiceNumber || "Invoice Detail"}>
+        {viewInvoice && (
+          <div className="space-y-5 text-sm">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Status</div>
+                <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${invStatusColors[viewInvoice.status] || ""}`}>{viewInvoice.status}</span>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Issue Date</div>
+                <div>{new Date(viewInvoice.issueDate).toLocaleDateString("en-IN")}</div>
+              </div>
+            </div>
+            <div className="border rounded-xl overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Description</th>
+                    <th className="px-3 py-2 text-right">Qty</th>
+                    <th className="px-3 py-2 text-right">Rate</th>
+                    <th className="px-3 py-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewInvoice.lineItems?.map((li: any) => (
+                    <tr key={li.id} className="border-t">
+                      <td className="px-3 py-2">{li.description}</td>
+                      <td className="px-3 py-2 text-right">{li.quantity}</td>
+                      <td className="px-3 py-2 text-right">{fmtCurrency(li.unitPrice)}</td>
+                      <td className="px-3 py-2 text-right font-medium">{fmtCurrency(li.totalPrice * (1 + li.taxRate / 100))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="bg-muted/40 rounded-xl p-4 space-y-1">
+              <div className="flex justify-between text-muted-foreground"><span>Taxable</span><span>{fmtCurrency(viewInvoice.taxableAmount)}</span></div>
+              <div className="flex justify-between text-muted-foreground"><span>GST</span><span>{fmtCurrency(viewInvoice.taxAmount)}</span></div>
+              <div className="flex justify-between font-bold text-base border-t pt-2"><span>Total</span><span>{fmtCurrency(viewInvoice.totalAmount)}</span></div>
+            </div>
+            {viewInvoice.payments?.length > 0 && (
+              <div>
+                <div className="text-xs text-muted-foreground uppercase font-semibold mb-2">Payments</div>
+                {viewInvoice.payments.map((p: any) => (
+                  <div key={p.id} className="flex justify-between p-3 border rounded-lg mb-2 text-xs">
+                    <div><div className="font-medium">{fmtCurrency(p.amount)}</div><div className="text-muted-foreground">{new Date(p.paymentDate).toLocaleDateString("en-IN")} · {p.method}</div></div>
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {viewInvoice.notes && <p className="text-xs text-muted-foreground whitespace-pre-line">{viewInvoice.notes}</p>}
+          </div>
+        )}
       </SlideOver>
     </div>
   );

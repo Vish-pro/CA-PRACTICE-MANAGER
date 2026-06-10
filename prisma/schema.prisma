@@ -13,8 +13,23 @@ model User {
   name         String?
   passwordHash String
   role         String   @default("JUNIOR_STAFF") // ADMIN, JUNIOR_STAFF, SENIOR_STAFF, CLIENT, BILLING
+  jobTitle     String?  // Partner, Director, Senior Manager, etc.
+  department   String?  // Audit & Assurance | Tax & Legal Advisory | Consulting / Advisory | Financial Advisory / Deals
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // HR / Employee master fields
+  employeeCode       String?   @unique // e.g. PAR001, MGR002, ART2025-01
+  employmentType     String?   // Article Assistant | Paid Assistant | Qualified CA | Manager | Partner
+  phone              String?
+  dateOfJoining      DateTime?
+  reportingToId      String?
+  reportingTo        User?     @relation("EmployeeReporting", fields: [reportingToId], references: [id])
+  reports            User[]    @relation("EmployeeReporting")
+  hodPartner         String?   // Name of HOD partner-in-charge
+  icaiRegNo          String?   // mandatory only for Article Assistants
+  totalLeavesAllowed Int       @default(30)
+  isActive           Boolean   @default(true)
 
   // Relationships
   assignedTasks  Task[]          @relation("AssignedTo")
@@ -27,9 +42,41 @@ model User {
   clientProfile  ClientProfile? // If role is CLIENT
   auditedClients ClientProfile[] @relation("ClientAuditor")
   givenRatings   ClientRating[] // Staff giving ratings to clients
-  assignedLeads  Lead[]          @relation("AssignedLeads")
-  todos          TodoItem[]      @relation("UserTodos")
-  sentMessages   ChatMessage[]   @relation("SentMessages")
+  assignedLeads   Lead[]          @relation("AssignedLeads")
+  todos           TodoItem[]      @relation("UserTodos")
+  sentMessages    ChatMessage[]   @relation("SentMessages")
+  createdInvoices Invoice[]       @relation("InvoiceCreatedBy")
+  timesheets      TimesheetEntry[] @relation("UserTimesheets")
+  uploadedDocs    Document[]      @relation("DocumentUploadedBy")
+}
+
+model Candidate {
+  id          String   @id @default(uuid())
+  name        String
+  email       String
+  phone       String?
+  position    String // Article Assistant | Paid Assistant | Qualified CA | Manager | Admin / Support
+  department  String
+  stage       String   @default("Applied") // Applied | Interviewing | Offer | Onboarding | Hired | Rejected
+  notes       String?
+  appliedDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TimesheetEntry {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("UserTimesheets", fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime @default(now())
+  taskTitle   String
+  clientName  String?
+  hours       Float
+  description String?
+  status      String   @default("DRAFT") // DRAFT | PENDING | APPROVED | REJECTED
+  isManual    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ClientProfile {
@@ -188,15 +235,22 @@ model ServiceSOP {
 }
 
 model Invoice {
-  id          String        @id @default(uuid())
-  clientId    String
-  client      ClientProfile @relation(fields: [clientId], references: [id])
-  status      String        @default("PROFORMA") // PROFORMA, UNPAID, PARTIAL, PAID
-  totalAmount Float         @default(0)
-  issueDate   DateTime      @default(now())
-  dueDate     DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String        @id @default(uuid())
+  invoiceNumber String?       @unique // INV-2025-0001 | PRO-2025-0001
+  clientId      String
+  client        ClientProfile @relation(fields: [clientId], references: [id])
+  status        String        @default("PROFORMA") // PROFORMA, UNPAID, PARTIAL, PAID, OVERDUE
+  taxableAmount Float         @default(0)
+  taxAmount     Float         @default(0)  // total GST
+  discount      Float         @default(0)
+  totalAmount   Float         @default(0)
+  notes         String?
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime?
+  createdById   String?
+  createdBy     User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   lineItems InvoiceLineItem[]
   payments  Payment[]
@@ -214,8 +268,10 @@ model InvoiceLineItem {
   taskId      String?
   task        Task?    @relation(fields: [taskId], references: [id])
   description String
+  hsnCode     String?
   quantity    Int      @default(1)
   unitPrice   Float
+  taxRate     Float    @default(18) // GST %
   totalPrice  Float
 }
 
@@ -236,7 +292,15 @@ model Document {
   fileName  String
   fileUrl   String
   fileType  String
+  fileSize  Int?          // bytes
+  direction String        @default("INWARD") // INWARD (received from client) | OUTWARD (returned/sent to client)
+  status    String        @default("PENDING_REVIEW") // PENDING_REVIEW | REVIEWED | RETURNED
+  category  String?       // e.g. PAN Card, Bank Statement, Invoice Bills, Signed Form
+  notes     String?
+  uploadedById String?
+  uploadedBy   User?      @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
   createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt @default(now())
 
   movements DocumentMovement[]
 }

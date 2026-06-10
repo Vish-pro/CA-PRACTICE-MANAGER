@@ -80,7 +80,7 @@ const sidebarLinks = [
   { name: "Home", href: "/action-center", icon: LayoutDashboard },
   { name: "Leads", href: "/leads", icon: UserPlus },
   { name: "Clients", href: "/clients", icon: Users },
-  { name: "Services", href: "/services", icon: Briefcase },
+  { name: "Work Queue", href: "/services", icon: Briefcase },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "Invoice", href: "/billing/invoices", icon: FileText },
   { name: "DSC", href: "/registers/dsc", icon: Shield },

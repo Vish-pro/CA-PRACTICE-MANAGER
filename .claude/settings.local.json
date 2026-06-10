@@ -49,7 +49,17 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/reports/leads-pipeline)",
       "Bash(gh pr *)",
       "PowerShell($env:PATH = $env:PATH + \";C:\\\\Program Files\\\\GitHub CLI\"; gh pr list --state open 2>&1)",
-      "PowerShell(git add \"src/app/\\(dashboard\\)/layout.tsx\")"
+      "PowerShell(git add \"src/app/\\(dashboard\\)/layout.tsx\")",
+      "Skill(run)",
+      "Skill(run:*)",
+      "PowerShell(Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"Set-Location 'F:\\\\CPM\\\\CA-PRACTICE-MANAGER'; npm run dev\" -PassThru | Select-Object Id)",
+      "PowerShell(Start-Sleep -Seconds 8; try { $r = Invoke-WebRequest -Uri \"http://localhost:3000\" -TimeoutSec 10 -UseBasicParsing; \"Status: $\\($r.StatusCode\\)\" } catch { \"Not ready yet: $_\" })",
+      "PowerShell(cd \"F:\\\\CPM\\\\CA-PRACTICE-MANAGER\"; [System.IO.File]::WriteAllText\\(\"prisma/truncate.sql\", 'TRUNCATE TABLE \"ChatMessage\", \"TodoItem\", \"DocumentMovement\", \"PasswordVault\", \"LicenseRegister\", \"DSCRegister\", \"SLA\", \"ClientRateCard\", \"ClientGroup\", \"Lead\", \"EmailThread\", \"EmailTemplate\", \"Reimbursement\", \"Leave\", \"Attendance\", \"Document\", \"Payment\", \"InvoiceLineItem\", \"Invoice\", \"ServiceSOP\", \"Service\", \"ClientRating\", \"TaskFeedback\", \"SOPChecklist\", \"Subtask\", \"Task\", \"TaskTemplate\", \"ClientProfile\", \"BillingEntity\", \"Counter\", \"User\" RESTART IDENTITY CASCADE;', [System.Text.Encoding]::UTF8\\); Get-Content prisma/truncate.sql | npx prisma db execute --stdin --schema=prisma/schema.prisma 2>&1)",
+      "PowerShell(cd \"F:\\\\CPM\\\\CA-PRACTICE-MANAGER\"; npx tsx --eval \"import { PrismaClient } from '@prisma/client'; const p = new PrismaClient\\(\\); p.service.findMany\\({ select:{name:true,category:true,hasSOP:true}, orderBy:{category:'asc'} }\\).then\\(s=>{s.forEach\\(x=>console.log\\(x.category.padEnd\\(20\\), x.hasSOP?'SOP':'   ', x.name\\)\\); p['\\\\$disconnect']\\(\\);}\\)\" 2>&1)",
+      "Bash(node -e \"const p = require\\('./node_modules/@prisma/client'\\); console.log\\(Object.keys\\(p\\)\\);\")",
+      "WebSearch",
+      "Bash(node scripts/seed-groups.mjs)",
+      "Bash(xargs grep -l \"Services\\\\|/services\")"
     ]
   }
 }

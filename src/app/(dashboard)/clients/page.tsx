@@ -6,7 +6,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { Avatar } from "@/components/ui/avatar";
 import { SlideOver } from "@/components/ui/slide-over";
-import { Users, UserPlus, UserCheck, UserSearch, MoreVertical, Plus, Folder, Edit2, Trash2 } from "lucide-react";
+import { Users, UserPlus, UserCheck, UserSearch, MoreVertical, Plus, Folder, Edit2, Trash2, Eye, EyeOff, Copy, Filter } from "lucide-react";
 import Papa from "papaparse";
 import toast from "react-hot-toast";
 
@@ -20,9 +20,20 @@ export default function ClientsPage() {
   const [staff, setStaff] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [revealedEmails, setRevealedEmails] = useState<Set<string>>(new Set());
+  const [revealedMobiles, setRevealedMobiles] = useState<Set<string>>(new Set());
+
+  const [groupFilter, setGroupFilter] = useState<{ id: string; name: string } | null>(null);
+
+  // Main view mode: clients table or business groups accordion
+  const [viewMode, setViewMode] = useState<"clients" | "groups">("clients");
 
   // Groups Management Drawer States
   const [isGroupsOpen, setIsGroupsOpen] = useState(false);
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
+  const [groupClients, setGroupClients] = useState<Record<string, any[]>>({});
   const [editingGroup, setEditingGroup] = useState<any | null>(null);
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
@@ -103,7 +114,8 @@ export default function ClientsPage() {
 
   useEffect(() => {
     fetchClients();
-  }, [search]);
+    setCurrentPage(1);
+  }, [search, groupFilter]);
 
   const handleSelectChange = (id: string, selected: boolean) => {
     setSelectedIds(prev => {
@@ -123,6 +135,8 @@ export default function ClientsPage() {
     try {
       const url = new URL("/api/clients", window.location.origin);
       if (search) url.searchParams.append("search", search);
+      if (groupFilter) url.searchParams.append("groupId", groupFilter.id);
+      url.searchParams.append("limit", "500");
 
       const res = await fetch(url.toString());
       const json = await res.json();
@@ -130,6 +144,7 @@ export default function ClientsPage() {
         setClients(json.data);
         setSelectedIds(new Set());
         setStats(json.stats || {});
+        setCurrentPage(1);
       }
     } catch (error) {
       console.error("Failed to fetch clients", error);
@@ -264,53 +279,89 @@ export default function ClientsPage() {
 
 
 
+  const totalPages = Math.max(1, Math.ceil(clients.length / pageSize));
+  const paginatedClients = clients.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   const columns: ColumnDef<any>[] = [
     {
-      header: "Business Name",
+      header: "Legal Name",
       cell: (row) => (
         <div className="flex items-center gap-3">
           <Avatar name={row.companyName} size="sm" />
           <div>
-            <div className="font-bold">{row.companyName}</div>
+            <div className="font-bold">{row.legalName || row.companyName}</div>
             <div className="text-xs text-muted-foreground">{row.clientCode}</div>
           </div>
         </div>
       ),
-      className: "w-[250px]"
-    },
-    {
-      header: "Legal Name",
-      accessorKey: "legalName",
-      cell: (row) => row.legalName || "-"
+      className: "w-[260px]"
     },
     {
       header: "Contact Person",
-      cell: (row) => row.contactName ? (
-        <div className="flex items-center gap-2">
-          <Avatar name={row.contactName} size="sm" />
-          <div>
-            <div>{row.contactName}</div>
-            <div className="text-xs text-muted-foreground">{row.contactEmail || "-"}</div>
+      cell: (row) => {
+        if (!row.contactName) return "-";
+        const emailRevealed = revealedEmails.has(row.id);
+        return (
+          <div className="flex items-center gap-2">
+            <Avatar name={row.contactName} size="sm" />
+            <div>
+              <div>{row.contactName}</div>
+              {row.contactEmail && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {emailRevealed ? row.contactEmail : "••••••••••"}
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setRevealedEmails(prev => { const n = new Set(prev); emailRevealed ? n.delete(row.id) : n.add(row.id); return n; }); }}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title={emailRevealed ? "Hide email" : "Show email"}
+                  >
+                    {emailRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(row.contactEmail); toast.success("Email copied"); }}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Copy email"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ) : "-"
+        );
+      }
     },
     {
       header: "Mobile",
-      accessorKey: "mobile",
-      cell: (row) => row.mobile || "-"
+      cell: (row) => {
+        if (!row.mobile) return "-";
+        const revealed = revealedMobiles.has(row.id);
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-sm">
+              {revealed ? row.mobile : "••••••••••"}
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); setRevealedMobiles(prev => { const n = new Set(prev); revealed ? n.delete(row.id) : n.add(row.id); return n; }); }}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title={revealed ? "Hide number" : "Show number"}
+            >
+              {revealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(row.mobile); toast.success("Mobile copied"); }}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title="Copy number"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        );
+      }
     },
     {
-      header: "Business Entity",
-      accessorKey: "businessEntity",
-      cell: (row) => (
-        <div className="truncate max-w-[120px]" title={row.businessEntity}>
-          {row.businessEntity || "-"}
-        </div>
-      )
-    },
-    {
-      header: "Services",
+      header: "Department",
       cell: (row: any) => {
         const services: { id: string; name: string }[] = row.rateCards?.map((rc: { service: { id: string; name: string } | null }) => rc.service).filter(Boolean) || [];
         if (services.length === 0) return "-";
@@ -344,7 +395,7 @@ export default function ClientsPage() {
       cell: (row) => row.group ? <Avatar name={row.group.name} size="sm" /> : "-"
     },
     {
-      header: "Auditor",
+      header: "Partner",
       cell: (row) => row.auditor ? <Avatar name={row.auditor.name} size="sm" /> : "-"
     },
     {
@@ -401,18 +452,32 @@ export default function ClientsPage() {
 
       {/* Table Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-lg font-bold">Client ({clients.length})</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-bold">
+            {viewMode === "groups"
+              ? `Business Groups (${groups.length})`
+              : `${groupFilter ? groupFilter.name : "Clients"} (${clients.length})`}
+          </h1>
+          {viewMode === "groups" && (
+            <button
+              onClick={() => { setViewMode("clients"); setExpandedGroupId(null); }}
+              className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full hover:bg-emerald-200 transition-colors"
+              title="Back to clients list"
+            >
+              ← Show Clients
+            </button>
+          )}
+          {viewMode === "clients" && groupFilter && (
+            <button
+              onClick={() => setGroupFilter(null)}
+              className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full hover:bg-red-100 hover:text-red-600 transition-colors"
+              title="Clear group filter"
+            >
+              {groupFilter.name} ✕
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => {
-              fetchGroups();
-              setIsGroupsOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 border rounded-md text-xs font-semibold text-[#1b4d3e] hover:bg-muted transition-colors"
-          >
-            <Folder className="w-4 h-4 text-[#1b4d3e]" />
-            📂 Business Groups
-          </button>
           <SearchInput
             placeholder="Search clients..."
             value={search}
@@ -423,12 +488,18 @@ export default function ClientsPage() {
             <button className="p-2 border rounded-md hover:bg-muted transition-colors">
               <MoreVertical className="w-5 h-5 text-muted-foreground" />
             </button>
-            <div className="absolute right-0 mt-1 hidden group-hover:block w-40 bg-popover border shadow-lg rounded-md z-50">
+            <div className="absolute right-0 mt-1 hidden group-hover:block w-48 bg-popover border shadow-lg rounded-md z-50">
               <button
                 className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
                 onClick={() => setIsAddOpen(true)}
               >
                 <Plus className="w-4 h-4" /> Add Client
+              </button>
+              <button
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
+                onClick={() => { fetchGroups(); setViewMode("groups"); setGroupFilter(null); }}
+              >
+                <Folder className="w-4 h-4" /> Business Groups
               </button>
               <label className="w-full text-left px-3 py-2 text-sm hover:bg-muted cursor-pointer block">
                 Import CSV
@@ -440,9 +511,10 @@ export default function ClientsPage() {
         </div>
       </div>
 
+      {viewMode === "clients" && (<>
       <DataTable
         columns={columns}
-        data={clients}
+        data={paginatedClients}
         keyExtractor={(row) => row.id}
         selectable
         selectedIds={selectedIds}
@@ -450,6 +522,166 @@ export default function ClientsPage() {
         onSelectAll={handleSelectAll}
         onRowClick={handleRowClick}
       />
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <span>Rows per page:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+            className="border rounded-md px-2 py-1 text-sm bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            {[10, 25, 50, 100].map(n => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="mr-2">
+            {clients.length === 0 ? "0" : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, clients.length)}`} of {clients.length}
+          </span>
+          <button
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+            className="px-2 py-1 border rounded-md text-xs disabled:opacity-40 hover:bg-muted transition-colors"
+          >
+            «
+          </button>
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-2 py-1 border rounded-md text-xs disabled:opacity-40 hover:bg-muted transition-colors"
+          >
+            ‹
+          </button>
+          <span className="px-3 py-1 border rounded-md text-xs bg-muted font-medium">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-2 py-1 border rounded-md text-xs disabled:opacity-40 hover:bg-muted transition-colors"
+          >
+            ›
+          </button>
+          <button
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages}
+            className="px-2 py-1 border rounded-md text-xs disabled:opacity-40 hover:bg-muted transition-colors"
+          >
+            »
+          </button>
+        </div>
+      </div>
+      </>)}
+
+      {/* Business Groups Accordion — main view */}
+      {viewMode === "groups" && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">Corporate umbrella families — click a group to view its subsidiaries</p>
+            <button
+              onClick={() => { fetchGroups(); setIsGroupsOpen(true); }}
+              className="flex items-center gap-1 px-3 py-1.5 bg-[#1b4d3e] text-white rounded-md text-xs font-semibold hover:bg-emerald-950 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Manage Groups
+            </button>
+          </div>
+
+          {groups.length === 0 && (
+            <div className="border border-dashed rounded-xl p-12 text-center">
+              <Folder className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-sm font-semibold">No business groups yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Create one via Manage Groups to link parents and subsidiaries.</p>
+            </div>
+          )}
+
+          {groups
+            .filter(g => !search || g.name.toLowerCase().includes(search.toLowerCase()))
+            .map((g) => {
+            const isExpanded = expandedGroupId === g.id;
+            const members    = groupClients[g.id] || [];
+            const memberCount = g._count?.clients ?? members.length;
+            return (
+              <div key={g.id} className="border rounded-xl overflow-hidden bg-card shadow-sm">
+                {/* Group header */}
+                <button
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/40 transition-colors text-left"
+                  onClick={async () => {
+                    if (isExpanded) { setExpandedGroupId(null); return; }
+                    setExpandedGroupId(g.id);
+                    if (!groupClients[g.id]) {
+                      const res  = await fetch(`/api/clients?groupId=${g.id}&limit=100`);
+                      const json = await res.json();
+                      setGroupClients(prev => ({ ...prev, [g.id]: json.data || [] }));
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#1b4d3e] text-white text-sm font-bold flex items-center justify-center">
+                      {g.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm text-foreground">{g.name}</div>
+                      {g.description && <div className="text-xs text-muted-foreground truncate max-w-md">{g.description}</div>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] bg-[#1b4d3e]/10 text-[#1b4d3e] font-semibold px-2.5 py-1 rounded-full">
+                      {memberCount} {memberCount === 1 ? "client" : "clients"}
+                    </span>
+                    <span className="text-muted-foreground text-xs">{isExpanded ? "▲" : "▼"}</span>
+                  </div>
+                </button>
+
+                {/* Accordion body */}
+                {isExpanded && (
+                  <div className="border-t bg-background">
+                    {!groupClients[g.id] ? (
+                      <p className="px-5 py-4 text-xs text-muted-foreground italic">Loading clients…</p>
+                    ) : members.length === 0 ? (
+                      <p className="px-5 py-4 text-xs text-muted-foreground italic">No clients in this group yet.</p>
+                    ) : (
+                      <div className="divide-y">
+                        {members.map((c: any) => (
+                          <button
+                            key={c.id}
+                            onClick={() => router.push(`/clients/${c.id}`)}
+                            className="w-full flex items-center gap-3 px-5 py-3 hover:bg-muted/40 transition-colors text-left"
+                          >
+                            <Avatar name={c.companyName} size="sm" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate">{c.legalName || c.companyName}</div>
+                              <div className="text-[10px] text-muted-foreground font-mono">{c.clientCode}</div>
+                            </div>
+                            <div className="flex items-center gap-4 shrink-0">
+                              {c.auditor && (
+                                <div className="flex items-center gap-1.5" title={`Partner: ${c.auditor.name}`}>
+                                  <Avatar name={c.auditor.name} size="sm" />
+                                </div>
+                              )}
+                              <span className="text-[10px] text-muted-foreground w-24 text-right">{c.businessEntity || ""}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="px-5 py-2.5 bg-muted/20 border-t">
+                      <button
+                        onClick={() => { setGroupFilter({ id: g.id, name: g.name }); setViewMode("clients"); setExpandedGroupId(null); }}
+                        className="text-xs text-[#1b4d3e] font-semibold hover:underline flex items-center gap-1"
+                      >
+                        <Filter className="w-3 h-3" /> View all in clients table
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <SlideOver open={isAddOpen} onClose={() => setIsAddOpen(false)} title="Add Client">
         <form id="add-client-form" onSubmit={handleAddClient} className="space-y-4">
@@ -742,7 +974,18 @@ export default function ClientsPage() {
                       <div className="text-xs font-bold text-primary">{g.name}</div>
                       {g.description && <div className="text-[10px] text-muted-foreground mt-0.5">{g.description}</div>}
                     </div>
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-1.5 items-center">
+                      <button
+                        onClick={() => {
+                          setGroupFilter({ id: g.id, name: g.name });
+                          setViewMode("clients");
+                          setIsGroupsOpen(false);
+                        }}
+                        className="px-2 py-1 bg-[#1b4d3e] text-white rounded text-[10px] font-semibold hover:bg-emerald-900 transition-colors flex items-center gap-1"
+                        title="View clients in this group"
+                      >
+                        <Filter className="w-2.5 h-2.5" /> View
+                      </button>
                       <button
                         onClick={() => {
                           setEditingGroup(g);

@@ -14,6 +14,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const activity = searchParams.get('activity');
+    const groupId = searchParams.get('groupId');
 
     // Pagination
     const page = parseInt(searchParams.get('page') || '1');
@@ -23,6 +24,9 @@ export async function GET(request: Request) {
     const where: any = {};
     if (activity === 'active') {
       where.isActive = true;
+    }
+    if (groupId) {
+      where.groupId = groupId;
     }
 
     if (search) {

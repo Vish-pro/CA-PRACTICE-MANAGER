@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
+import Link from "next/link";
+import {
   Building, Shield, CheckSquare, Clock, Sliders, Cpu, CreditCard,
   Plus, Edit2, Trash2, ArrowLeft, Check, AlertCircle, Eye, ShieldAlert,
   Calendar, Layers, Mail, PhoneCall, HelpCircle, ToggleLeft, Key, UserCheck, Briefcase, Globe, PieChart, Users
@@ -995,12 +996,33 @@ export default function SettingsPage() {
                 <div className="text-[10px] text-muted-foreground">Next renewal: Jan 15, 2027</div>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setActiveView("subscription")}
               className="w-full text-center py-2 border rounded-lg text-xs font-semibold text-blue-600 hover:bg-muted group-hover:border-blue-600 transition-colors mt-4"
             >
               Manage Subscription
             </button>
+          </div>
+
+          {/* Card: Task & Service Module */}
+          <div className="bg-card border rounded-2xl p-5 hover:shadow-lg transition-all border-l-4 border-l-violet-600 flex flex-col justify-between group h-64">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-bold text-sm text-[#1b4d3e]">Task & Service Module</span>
+                <Briefcase className="w-5 h-5 text-violet-600" />
+              </div>
+              <div className="grid grid-cols-1 gap-y-2 mt-3 text-xs font-medium text-violet-700">
+                <span>📋 Services Master</span>
+                <span>🔖 SOP Checklists</span>
+                <span>⚙️ Task Sub-statuses</span>
+              </div>
+            </div>
+            <Link
+              href="/settings/services"
+              className="w-full text-center py-2 border rounded-lg text-xs font-semibold text-violet-600 hover:bg-muted group-hover:border-violet-600 transition-colors mt-4 block"
+            >
+              Manage Services & SOPs
+            </Link>
           </div>
 
         </div>

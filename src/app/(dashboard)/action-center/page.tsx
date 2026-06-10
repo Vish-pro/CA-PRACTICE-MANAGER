@@ -10,30 +10,29 @@ import {
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
 
-// --- Types & Interfaces ---
+// --- Types & Interfaces (shapes returned by /api/hr/*) ---
 interface LeaveRequest {
   id: string;
-  employeeName: string;
-  employeeId: string;
+  userId: string;
   startDate: string;
   endDate: string;
   reason: string;
   type: "SICK" | "CASUAL" | "EARNED";
   status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
+  user?: { id: string; name: string; employeeCode?: string | null; employmentType?: string | null };
 }
 
 interface TimesheetLog {
   id: string;
-  employeeId: string;
-  employeeName: string;
+  userId: string;
   date: string;
-  taskId: string;
   taskTitle: string;
-  clientName: string;
+  clientName?: string | null;
   hours: number;
-  description: string;
+  description?: string | null;
   status: "DRAFT" | "PENDING" | "APPROVED" | "REJECTED";
+  user?: { id: string; name: string; employeeCode?: string | null; employmentType?: string | null };
 }
 
 interface ActiveTimer {
@@ -49,50 +48,63 @@ export default function ActionCenterPage() {
   const [userRole, setUserRole] = useState<string>("CLERK");
   const [pendingLeaves, setPendingLeaves] = useState<LeaveRequest[]>([]);
   const [pendingTimesheets, setPendingTimesheets] = useState<TimesheetLog[]>([]);
+  const [overdueInvoices, setOverdueInvoices] = useState<{ count: number; amount: number } | null>(null);
   const [currentUserTimer, setCurrentUserTimer] = useState<ActiveTimer | null>(null);
   const [secondsElapsed, setSecondsElapsed] = useState<number>(0);
   const [mockKunalSeconds, setMockKunalSeconds] = useState<number>(6124); // ~1h 42m
   const [mockMeeraSeconds, setMockMeeraSeconds] = useState<number>(1425); // ~23m
 
+  // Fetch overdue invoice stats from real API
+  useEffect(() => {
+    fetch("/api/billing/invoices?status=UNPAID&limit=1")
+      .then(r => r.json())
+      .then(json => {
+        if (json.stats) {
+          setOverdueInvoices({ count: json.stats.overdueCount, amount: json.stats.unpaidAmount });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // 1. Initial State Loading & Storage Event Synchronization
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // Approval queues come from the database; manager sees only article assistants,
+      // partners/admin/HR see everything, others see nothing.
+      const loadApprovalQueues = async (storedRole: string) => {
+        try {
+          const [leavesRes, tsRes] = await Promise.all([
+            fetch("/api/hr/leaves?status=PENDING"),
+            fetch("/api/hr/timesheets?status=PENDING"),
+          ]);
+          const leavesJson = await leavesRes.json();
+          const tsJson = await tsRes.json();
+          const allLeaves: LeaveRequest[] = leavesJson.data || [];
+          const allTimesheets: TimesheetLog[] = tsJson.data || [];
+
+          if (storedRole === "MANAGER") {
+            setPendingLeaves(allLeaves.filter(req => req.user?.employmentType === "Article Assistant"));
+            setPendingTimesheets(allTimesheets.filter(log => log.user?.employmentType === "Article Assistant"));
+          } else if (["ADMIN", "PARTNER", "DIRECTOR", "HR"].includes(storedRole)) {
+            setPendingLeaves(allLeaves);
+            setPendingTimesheets(allTimesheets);
+          } else {
+            setPendingLeaves([]);
+            setPendingTimesheets([]);
+          }
+        } catch (e) {
+          console.error("Failed to load approval queues", e);
+        }
+      };
+
       const loadState = () => {
         // Fetch simulated role
         const storedRole = localStorage.getItem("prabandh_simulated_role") || "CLERK";
         setUserRole(storedRole);
 
-        // Fetch pending leaves
-        const storedLeaves = localStorage.getItem("ca_leave_requests");
-        if (storedLeaves) {
-          const parsed = JSON.parse(storedLeaves) as LeaveRequest[];
-          
-          // Filter based on hierarchy:
-          // Manager (Neha Gupta) sees Kunal, Meera, Aniket leaves
-          // Partners (Admin/Partner/Director) see all leaves
-          if (storedRole === "MANAGER") {
-            setPendingLeaves(parsed.filter(req => req.status === "PENDING" && ["ART2025-01", "ART2025-02", "ART2025-03"].includes(req.employeeId)));
-          } else if (["ADMIN", "PARTNER", "DIRECTOR", "HR"].includes(storedRole)) {
-            setPendingLeaves(parsed.filter(req => req.status === "PENDING"));
-          } else {
-            setPendingLeaves([]);
-          }
-        }
+        loadApprovalQueues(storedRole);
 
-        // Fetch pending timesheets
-        const storedTimesheets = localStorage.getItem("ca_daily_timesheets");
-        if (storedTimesheets) {
-          const parsed = JSON.parse(storedTimesheets) as TimesheetLog[];
-          if (storedRole === "MANAGER") {
-            setPendingTimesheets(parsed.filter(log => log.status === "PENDING" && ["ART2025-01", "ART2025-02", "ART2025-03"].includes(log.employeeId)));
-          } else if (["ADMIN", "PARTNER", "DIRECTOR", "HR"].includes(storedRole)) {
-            setPendingTimesheets(parsed.filter(log => log.status === "PENDING"));
-          } else {
-            setPendingTimesheets([]);
-          }
-        }
-
-        // Fetch user active timer
+        // Fetch user active timer (live stopwatch stays in localStorage)
         const storedTimer = localStorage.getItem("ca_active_timer");
         if (storedTimer) {
           const parsed = JSON.parse(storedTimer) as ActiveTimer;
@@ -133,50 +145,33 @@ export default function ActionCenterPage() {
     return () => clearInterval(timer);
   }, [currentUserTimer]);
 
-  // 3. Approval Handlers
-  const handleLeaveApproval = (id: string, action: "APPROVED" | "REJECTED") => {
-    const stored = localStorage.getItem("ca_leave_requests");
-    if (!stored) return;
-
-    const parsed = JSON.parse(stored) as LeaveRequest[];
-    const updated = parsed.map(req => {
-      if (req.id === id) {
-        // If approved, update leaves taken in Employee Directory
-        if (action === "APPROVED" && req.status !== "APPROVED") {
-          const startDate = new Date(req.startDate);
-          const endDate = new Date(req.endDate);
-          const leaveDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24)) + 1;
-
-          const storedEmps = localStorage.getItem("ca_employee_directory");
-          if (storedEmps) {
-            const employees = JSON.parse(storedEmps);
-            const updatedEmps = employees.map((e: any) => e.employee_id === req.employeeId
-              ? { ...e, leavesTaken: (e.leavesTaken || 0) + leaveDays }
-              : e
-            );
-            localStorage.setItem("ca_employee_directory", JSON.stringify(updatedEmps));
-          }
-        }
-        return { ...req, status: action };
-      }
-      return req;
+  // 3. Approval Handlers (persist to database; "leaves taken" is derived from approved leaves)
+  const handleLeaveApproval = async (id: string, action: "APPROVED" | "REJECTED") => {
+    const res = await fetch(`/api/hr/leaves/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: action }),
     });
-
-    localStorage.setItem("ca_leave_requests", JSON.stringify(updated));
-    window.dispatchEvent(new Event("storage"));
-    toast.success(`Leave request successfully ${action.toLowerCase()}!`);
+    if (res.ok) {
+      setPendingLeaves(prev => prev.filter(req => req.id !== id));
+      toast.success(`Leave request successfully ${action.toLowerCase()}!`);
+    } else {
+      toast.error("Failed to update leave request");
+    }
   };
 
-  const handleTimesheetApproval = (id: string, action: "APPROVED" | "REJECTED") => {
-    const stored = localStorage.getItem("ca_daily_timesheets");
-    if (!stored) return;
-
-    const parsed = JSON.parse(stored) as TimesheetLog[];
-    const updated = parsed.map(log => log.id === id ? { ...log, status: action } : log);
-
-    localStorage.setItem("ca_daily_timesheets", JSON.stringify(updated));
-    window.dispatchEvent(new Event("storage"));
-    toast.success(`Daily timesheet successfully ${action.toLowerCase()}!`);
+  const handleTimesheetApproval = async (id: string, action: "APPROVED" | "REJECTED") => {
+    const res = await fetch(`/api/hr/timesheets/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: action }),
+    });
+    if (res.ok) {
+      setPendingTimesheets(prev => prev.filter(log => log.id !== id));
+      toast.success(`Daily timesheet successfully ${action.toLowerCase()}!`);
+    } else {
+      toast.error("Failed to update timesheet");
+    }
   };
 
   const formatSeconds = (sec: number) => {
@@ -198,6 +193,29 @@ export default function ActionCenterPage() {
         <h2 className="text-3xl font-extrabold tracking-tight text-primary">Action Center</h2>
         <p className="text-muted-foreground text-sm mt-1">Centralized review board for firm operations, subordinate leaves, and billable timesheets.</p>
       </div>
+
+      {/* Overdue Invoice Alert */}
+      {overdueInvoices && overdueInvoices.count > 0 && (
+        <div className="flex items-start gap-4 bg-red-50 border border-red-200 rounded-2xl p-4">
+          <div className="shrink-0 w-9 h-9 rounded-full bg-red-100 flex items-center justify-center">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-red-800 text-sm">
+              {overdueInvoices.count} Overdue Invoice{overdueInvoices.count !== 1 ? "s" : ""}
+            </div>
+            <div className="text-xs text-red-600 mt-0.5">
+              {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(overdueInvoices.amount)} pending — past due date
+            </div>
+          </div>
+          <a
+            href="/billing/invoices"
+            className="shrink-0 px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors"
+          >
+            View Invoices →
+          </a>
+        </div>
+      )}
 
       {/* A. LIVE TEAM WORK TRACKER (Only for Partners/Supervisors) */}
       {isPartnerOrManager && (
@@ -311,7 +329,7 @@ export default function ActionCenterPage() {
                     </div>
                     <p className="font-extrabold text-base text-foreground mt-1.5">Apply for {item.type.toLowerCase()} leave</p>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                      Requester: <span className="font-semibold text-foreground">{item.employeeName}</span> ({item.employeeId}) • Period: <span className="font-semibold text-foreground">{new Date(item.startDate).toLocaleDateString()} to {new Date(item.endDate).toLocaleDateString()}</span>
+                      Requester: <span className="font-semibold text-foreground">{item.user?.name || "—"}</span> ({item.user?.employeeCode || "—"}) • Period: <span className="font-semibold text-foreground">{new Date(item.startDate).toLocaleDateString()} to {new Date(item.endDate).toLocaleDateString()}</span>
                     </p>
                     <p className="text-xs text-muted-foreground/90 italic leading-relaxed mt-1 bg-muted/30 p-2 rounded-lg border border-border/40">
                       &quot;{item.reason}&quot;
@@ -357,7 +375,7 @@ export default function ActionCenterPage() {
                       Log {item.hours.toFixed(2)} hrs on {item.taskTitle}
                     </p>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                      Staff Member: <span className="font-semibold text-foreground">{item.employeeName}</span> ({item.employeeId}) • Client: <span className="font-semibold text-foreground">{item.clientName}</span> • Date: <span className="font-semibold text-foreground">{item.date}</span>
+                      Staff Member: <span className="font-semibold text-foreground">{item.user?.name || "—"}</span> ({item.user?.employeeCode || "—"}) • Client: <span className="font-semibold text-foreground">{item.clientName || "—"}</span> • Date: <span className="font-semibold text-foreground">{new Date(item.date).toLocaleDateString()}</span>
                     </p>
                     <p className="text-xs text-muted-foreground/90 italic leading-relaxed mt-1 bg-muted/30 p-2 rounded-lg border border-border/40">
                       &quot;{item.description}&quot;

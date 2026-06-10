@@ -1,575 +1,203 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { SearchInput } from "@/components/ui/search-input";
-import { CategoryPills } from "@/components/ui/category-pills";
-import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Avatar } from "@/components/ui/avatar";
-import { SlideOver } from "@/components/ui/slide-over";
-import { ConfirmByTyping } from "@/components/ui/confirm-by-typing";
-import { useSession } from "next-auth/react";
-import { Lock, MoreVertical, Plus, Trash2, Edit, GripVertical } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Papa from "papaparse";
-import toast from "react-hot-toast";
 
-const CATEGORIES = [
-  "All",
-  "GST",
-  "MCA",
-  "TDS/TCS",
-  "Income Tax",
-  "Professional Tax",
-  "PF",
-  "ESI",
-  "Advance Tax",
-  "Manual"
-];
+function dueDateLabel(dateStr: string | null) {
+  if (!dateStr) return { label: "No due date", color: "text-muted-foreground", urgent: false };
+  const due = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return { label: `${Math.abs(diffDays)}d overdue`, color: "text-red-600 font-bold", urgent: true };
+  if (diffDays === 0) return { label: "Due today", color: "text-orange-600 font-bold", urgent: true };
+  if (diffDays <= 3) return { label: `${diffDays}d left`, color: "text-orange-500 font-semibold", urgent: true };
+  if (diffDays <= 7) return { label: `${diffDays}d left`, color: "text-yellow-600", urgent: false };
+  return { label: due.toLocaleDateString("en-IN", { day: "numeric", month: "short" }), color: "text-muted-foreground", urgent: false };
+}
 
-const FREQUENCIES = [
-  "ONE_TIME", "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "QUARTERLY", "ANNUAL"
-];
-
-export default function ServicesPage() {
-  const { data: session } = useSession();
-  const [isDeleteServiceOpen, setIsDeleteServiceOpen] = useState(false);
-  const [serviceToDelete, setServiceToDelete] = useState<any>(null);
-
-  const [services, setServices] = useState<any[]>([]);
+export default function ActiveServicesPage() {
+  const router = useRouter();
+  const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  // SlideOvers
-  const [isServiceSlideOpen, setIsServiceSlideOpen] = useState(false);
-  const [isSopSlideOpen, setIsSopSlideOpen] = useState(false);
-
-  // Current active item for edit/sops
-  const [currentService, setCurrentService] = useState<any | null>(null);
-
-  // SOP State
-  const [sops, setSops] = useState<any[]>([]);
-  const [newSopTitle, setNewSopTitle] = useState("");
-  const [newSopDesc, setNewSopDesc] = useState("");
-
-  useEffect(() => {
-    fetchServices();
-  }, [category, search]);
-
-  const fetchServices = async () => {
+  const fetchTasks = async () => {
     setLoading(true);
     try {
-      const url = new URL("/api/services", window.location.origin);
-      if (category !== "All") url.searchParams.append("category", category);
-      if (search) url.searchParams.append("search", search);
+      const url = new URL("/api/tasks", window.location.origin);
+      url.searchParams.set("limit", "200");
+      if (search) url.searchParams.set("search", search);
 
       const res = await fetch(url.toString());
       const json = await res.json();
       if (json.data) {
-        setServices(json.data);
+        const active = json.data
+          .filter((t: any) => !["COMPLETED", "CANCELLED"].includes(t.status))
+          .sort((a: any, b: any) => {
+            if (!a.dueDate && !b.dueDate) return 0;
+            if (!a.dueDate) return 1;
+            if (!b.dueDate) return -1;
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          });
+        setTasks(active);
       }
-    } catch (error) {
-      console.error("Failed to fetch services", error);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExportCSV = () => {
-    const csvData = services.map(s => ({
-      "Name": s.name || "",
-      "Category": s.category || "",
-      "Frequency": s.frequency || "",
-      "Professional Fee": s.professionalFee || 0,
-      "Description": s.description || "",
-      "Active": s.isActive ? "Yes" : "No",
-      "Locked": s.isLocked ? "Yes" : "No"
-    }));
-    const csv = Papa.unparse(csvData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "services_export.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  useEffect(() => { fetchTasks(); }, [search]);
 
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const statusOptions = ["all", "OVERDUE", "PENDING", "IN_PROGRESS", "SENT_FOR_REVIEW", "REQUEST_CHANGES"];
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const rows = results.data as any[];
-        if (rows.length === 0) {
-          toast.error("CSV file is empty");
-          return;
-        }
+  const displayed = statusFilter === "all"
+    ? tasks
+    : tasks.filter(t => t.status === statusFilter);
 
-        const loadingToast = toast.loading(`Importing ${rows.length} services...`);
-        let successCount = 0;
-        let errorCount = 0;
-
-        for (const row of rows) {
-          try {
-            const body = {
-              name: row["Name"] || row["name"] || "",
-              category: row["Category"] || row["category"] || "Other",
-              frequency: row["Frequency"] || row["frequency"] || "One-time",
-              professionalFee: parseFloat(row["Professional Fee"] || row["professionalFee"] || "0"),
-              description: row["Description"] || row["description"] || "",
-              isActive: (row["Active"] || row["isActive"] || "Yes").toLowerCase() === "yes",
-            };
-
-            if (!body.name) {
-              errorCount++;
-              continue;
-            }
-
-            const res = await fetch("/api/services", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body),
-            });
-
-            if (res.ok) successCount++;
-            else errorCount++;
-          } catch (err) {
-            errorCount++;
-          }
-        }
-
-        toast.dismiss(loadingToast);
-        if (successCount > 0) {
-          toast.success(`Successfully imported ${successCount} services.`);
-        }
-        if (errorCount > 0) {
-          toast.error(`Failed to import ${errorCount} rows.`);
-        }
-        fetchServices();
-      },
-      error: (error) => {
-        toast.error(`Error parsing CSV: ${error.message}`);
-      }
-    });
-
-    e.target.value = '';
-  };
-
-  const handleSaveService = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-
-    const payload = {
-      name: formData.get("name"),
-      category: formData.get("category"),
-      frequency: formData.get("frequency"),
-      professionalFee: parseFloat(formData.get("fee") as string) || 0,
-      description: formData.get("description"),
-      isActive: formData.get("isActive") === "on",
-      isLocked: formData.get("isLocked") === "on",
-    };
-
-    const url = currentService ? `/api/services/${currentService.id}` : "/api/services";
-    const method = currentService ? "PUT" : "POST";
-
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    setIsServiceSlideOpen(false);
-    fetchServices();
-  };
-
-  const handleDeleteService = async (id: string) => {
-    await fetch(`/api/services/${id}`, { method: "DELETE" });
-    fetchServices();
-  };
-
-  const handleToggleStatus = async (service: any) => {
-    await fetch(`/api/services/${service.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !service.isActive }),
-    });
-    fetchServices();
-  };
-
-  // SOP Handlers
-  const openSopManager = async (service: any) => {
-    setCurrentService(service);
-    setIsSopSlideOpen(true);
-    const res = await fetch(`/api/services/${service.id}/sops`);
-    const json = await res.json();
-    if (json.data) setSops(json.data);
-  };
-
-  const handleAddSop = async () => {
-    if (!newSopTitle) return;
-    await fetch(`/api/services/${currentService.id}/sops`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newSopTitle, description: newSopDesc })
-    });
-    setNewSopTitle("");
-    setNewSopDesc("");
-    const res = await fetch(`/api/services/${currentService.id}/sops`);
-    const json = await res.json();
-    if (json.data) setSops(json.data);
-    fetchServices(); // refresh hasSop
-  };
-
-  const handleDeleteSop = async (sopId: string) => {
-    await fetch(`/api/services/${currentService.id}/sops/${sopId}`, { method: "DELETE" });
-    const res = await fetch(`/api/services/${currentService.id}/sops`);
-    const json = await res.json();
-    if (json.data) setSops(json.data);
-    fetchServices(); // refresh hasSop
-  };
-
-  const columns: ColumnDef<any>[] = [
-    {
-      header: "Service",
-      accessorKey: "name",
-      cell: (row) => (
-        <div className="flex items-center gap-3">
-          <Avatar name={row.name} size="sm" />
-          <span className="font-medium">{row.name}</span>
-          {row.isLocked && (
-            <div title="System default service (cannot be deleted)" className="flex items-center">
-              <Lock className="w-3 h-3 text-muted-foreground cursor-help" />
-            </div>
-          )}
-        </div>
-      )
-    },
-    { header: "Category", accessorKey: "category" },
-    {
-      header: "Frequency",
-      accessorKey: "frequency",
-      cell: (row) => row.frequency === "ONE_TIME" ? "-" : row.frequency.charAt(0) + row.frequency.slice(1).toLowerCase()
-    },
-    {
-      header: "Professional Fee",
-      accessorKey: "professionalFee",
-      cell: (row) => row.professionalFee > 0 ? `₹${row.professionalFee.toLocaleString()}` : "-"
-    },
-    {
-      header: "Assigned Clients",
-      accessorKey: "assignedClients",
-      cell: (row) => (
-        <span className="font-medium text-muted-foreground">
-          {row.assignedClients || 0}
-        </span>
-      )
-    },
-    {
-      header: "SOP",
-      accessorKey: "hasSOP",
-      cell: (row) => (
-        <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", row.hasSOP ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
-          {row.hasSOP ? "Yes" : "No"}
-        </span>
-      )
-    },
-    {
-      header: "Sub Tasks",
-      accessorKey: "hasSubtasks",
-      cell: (row) => (
-        <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", row.hasSubtasks ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
-          {row.hasSubtasks ? "Yes" : "No"}
-        </span>
-      )
-    },
-    {
-      header: "Status",
-      accessorKey: "isActive",
-      cell: (row) => <StatusBadge status={row.isActive ? "Active" : "Inactive"} />
-    },
-    {
-      header: "Actions",
-      cell: (row) => (
-        <div className="flex items-center gap-2">
-          <div className="relative group">
-            <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors">
-              <MoreVertical className="w-4 h-4" />
-            </button>
-            <div className="absolute right-0 mt-1 hidden group-hover:block w-40 bg-popover border shadow-lg rounded-md z-50">
-              <button
-                className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
-                onClick={() => { setCurrentService(row); setIsServiceSlideOpen(true); }}
-              >
-                Edit
-              </button>
-              <button
-                className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
-                onClick={() => openSopManager(row)}
-              >
-                Manage SOPs
-              </button>
-              <button
-                className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
-                onClick={() => handleToggleStatus(row)}
-              >
-                Toggle Status
-              </button>
-              {!row.isLocked && (
-                <button
-                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                    onClick={() => { setServiceToDelete(row); setIsDeleteServiceOpen(true); }}
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )
-    }
-  ];
+  const overdue = tasks.filter(t => t.status === "OVERDUE" || (t.dueDate && new Date(t.dueDate) < new Date() && !["COMPLETED", "CANCELLED"].includes(t.status))).length;
+  const dueToday = tasks.filter(t => {
+    if (!t.dueDate) return false;
+    const d = new Date(t.dueDate);
+    const n = new Date();
+    return d.toDateString() === n.toDateString();
+  }).length;
+  const inProgress = tasks.filter(t => t.status === "IN_PROGRESS").length;
 
   return (
     <div className="space-y-6">
-      {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1b4d3e]">Services Master & SOP Checklist</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Manage professional engagements and map precise SOP checklists contextually.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1b4d3e]">Running Services</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Active work queue ordered by nearest due date</p>
         </div>
         <div className="flex items-center gap-2">
-          <SearchInput
-            placeholder="Search services..."
-            value={search}
-            onChange={setSearch}
-            className="w-64"
-          />
-          <div className="relative group">
-            <button className="p-2 border rounded-md hover:bg-muted text-muted-foreground transition-colors flex items-center gap-1">
-              <MoreVertical className="w-5 h-5" />
-            </button>
-            <div className="absolute right-0 mt-1 hidden group-hover:block w-40 bg-popover border shadow-lg rounded-md z-50">
-              <button
-                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2"
-                onClick={() => { setCurrentService(null); setIsServiceSlideOpen(true); }}
-              >
-                <Plus className="w-4 h-4" /> Add Service
-              </button>
-              <label className="w-full text-left px-3 py-2 text-sm hover:bg-muted cursor-pointer block">
-                Import CSV
-                <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-              </label>
-              <button onClick={handleExportCSV} className="w-full text-left px-3 py-2 text-sm hover:bg-muted">Export CSV</button>
-            </div>
+          <SearchInput placeholder="Search tasks..." value={search} onChange={setSearch} className="w-56" />
+          <button onClick={fetchTasks} className="p-2 border rounded-md hover:bg-muted transition-colors" title="Refresh">
+            <RefreshCw className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+      </div>
+
+      {/* Stats strip */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+          <div>
+            <div className="text-xl font-bold text-red-700">{overdue}</div>
+            <div className="text-[10px] text-red-500 font-medium uppercase tracking-wide">Overdue</div>
+          </div>
+        </div>
+        <div className="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 flex items-center gap-3">
+          <Clock className="w-5 h-5 text-orange-500 shrink-0" />
+          <div>
+            <div className="text-xl font-bold text-orange-700">{dueToday}</div>
+            <div className="text-[10px] text-orange-500 font-medium uppercase tracking-wide">Due Today</div>
+          </div>
+        </div>
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0" />
+          <div>
+            <div className="text-xl font-bold text-blue-700">{inProgress}</div>
+            <div className="text-[10px] text-blue-500 font-medium uppercase tracking-wide">In Progress</div>
           </div>
         </div>
       </div>
 
-      <div>
-        <CategoryPills
-          categories={CATEGORIES}
-          active={category}
-          onChange={setCategory}
-          className="mb-2"
-        />
-        <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
-          <Lock className="w-3 h-3" />
-          <span>System default services are locked and cannot be deleted</span>
-        </div>
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={services}
-        keyExtractor={(row) => row.id}
-        selectable
-        className="[&_td]:py-4 [&_th]:py-4"
-      />
-
-      {/* Add / Edit Service Slide-over */}
-      <SlideOver
-        open={isServiceSlideOpen}
-        onClose={() => setIsServiceSlideOpen(false)}
-        title={currentService ? "Edit Service" : "Add Service"}
-      >
-        <form id="service-form" onSubmit={handleSaveService} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Service Name</label>
-            <input
-              name="name"
-              required
-              defaultValue={currentService?.name}
-              className="w-full p-2 border rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Category</label>
-            <select
-              name="category"
-              defaultValue={currentService?.category || "GST"}
-              className="w-full p-2 border rounded-md"
-            >
-              {CATEGORIES.filter(c => c !== "All").map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Frequency</label>
-            <select
-              name="frequency"
-              defaultValue={currentService?.frequency || "ONE_TIME"}
-              className="w-full p-2 border rounded-md"
-            >
-              {FREQUENCIES.map(f => (
-                <option key={f} value={f}>
-                  {f === "ONE_TIME" ? "One-time" : f.charAt(0) + f.slice(1).toLowerCase()}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Professional Fee (₹)</label>
-            <input
-              type="number"
-              name="fee"
-              defaultValue={currentService?.professionalFee}
-              className="w-full p-2 border rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              name="description"
-              defaultValue={currentService?.description}
-              className="w-full p-2 border rounded-md"
-              rows={3}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="isActive"
-              id="isActive"
-              defaultChecked={currentService ? currentService.isActive : true}
-              className="rounded"
-            />
-            <label htmlFor="isActive" className="text-sm">Active</label>
-          </div>
-          {/* Note: In real app, hide this if not ADMIN */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="isLocked"
-              id="isLocked"
-              defaultChecked={currentService?.isLocked}
-              className="rounded"
-            />
-            <label htmlFor="isLocked" className="text-sm">Mark as Locked (System Default)</label>
-          </div>
-        </form>
-        <div className="mt-6 flex justify-end gap-2">
+      {/* Status filter pills */}
+      <div className="flex gap-2 flex-wrap">
+        {statusOptions.map(s => (
           <button
-            type="button"
-            onClick={() => setIsServiceSlideOpen(false)}
-            className="px-4 py-2 border rounded-md"
-          >
-            Cancel
-          </button>
-          <button
-            form="service-form"
-            type="submit"
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
-          >
-            Save Service
-          </button>
-        </div>
-      </SlideOver>
-
-      {/* Manage SOPs Slide-over */}
-      <SlideOver
-        open={isSopSlideOpen}
-        onClose={() => setIsSopSlideOpen(false)}
-        title={`SOP Checklist — ${currentService?.name}`}
-      >
-        <div className="space-y-4">
-          <div className="space-y-2">
-            {sops.map((sop, idx) => (
-              <div key={sop.id} className="flex items-start gap-3 p-3 border rounded-lg bg-card">
-                <GripVertical className="w-5 h-5 text-muted-foreground mt-0.5 cursor-grab shrink-0" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-muted-foreground">{idx + 1}.</span>
-                    <span className="font-semibold">{sop.title}</span>
-                  </div>
-                  {sop.description && (
-                    <p className="text-sm text-muted-foreground mt-1 ml-5">{sop.description}</p>
-                  )}
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <button className="p-1.5 text-muted-foreground hover:bg-muted rounded">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSop(sop.id)}
-                    className="p-1.5 text-red-500 hover:bg-red-50 rounded"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {sops.length === 0 && (
-              <p className="text-muted-foreground text-sm text-center py-4">No SOP steps found.</p>
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={cn(
+              "px-3 py-1 rounded-full text-xs font-semibold border transition-colors",
+              statusFilter === s
+                ? "bg-[#1b4d3e] text-white border-[#1b4d3e]"
+                : "bg-background text-muted-foreground hover:bg-muted"
             )}
-          </div>
+          >
+            {s === "all" ? `All (${tasks.length})` : s.replace(/_/g, " ")}
+          </button>
+        ))}
+      </div>
 
-          <div className="pt-4 border-t mt-6">
-            <h4 className="font-medium mb-3">Add New Step</h4>
-            <div className="space-y-3">
-              <input
-                value={newSopTitle}
-                onChange={(e) => setNewSopTitle(e.target.value)}
-                placeholder="Step Title"
-                className="w-full p-2 border rounded-md text-sm"
-              />
-              <textarea
-                value={newSopDesc}
-                onChange={(e) => setNewSopDesc(e.target.value)}
-                placeholder="Step Description (optional)"
-                className="w-full p-2 border rounded-md text-sm"
-                rows={2}
-              />
-              <button
-                onClick={handleAddSop}
-                disabled={!newSopTitle}
-                className="w-full py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
-              >
-                Add Step
-              </button>
-            </div>
-          </div>
+      {/* Table */}
+      {loading ? (
+        <div className="py-16 text-center text-sm text-muted-foreground">Loading active work queue...</div>
+      ) : displayed.length === 0 ? (
+        <div className="py-16 text-center text-sm text-muted-foreground">No active tasks found.</div>
+      ) : (
+        <div className="border rounded-xl overflow-hidden bg-card">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 border-b text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold">Task / Service</th>
+                <th className="px-4 py-3 text-left font-semibold">Client</th>
+                <th className="px-4 py-3 text-left font-semibold">Assignee</th>
+                <th className="px-4 py-3 text-left font-semibold">Due Date</th>
+                <th className="px-4 py-3 text-left font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {displayed.map((task) => {
+                const due = dueDateLabel(task.dueDate);
+                return (
+                  <tr
+                    key={task.id}
+                    onClick={() => router.push(`/tasks/${task.id}`)}
+                    className={cn(
+                      "hover:bg-muted/40 cursor-pointer transition-colors",
+                      due.urgent && "bg-red-50/40"
+                    )}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-foreground">{task.title}</div>
+                      {task.service?.name && (
+                        <div className="text-[11px] text-muted-foreground mt-0.5">{task.service.name}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {task.client ? (
+                        <div className="flex items-center gap-2">
+                          <Avatar name={task.client.companyName} size="sm" />
+                          <span className="text-xs">{task.client.companyName}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {task.assignedTo ? (
+                        <div className="flex items-center gap-2">
+                          <Avatar name={task.assignedTo.name} size="sm" />
+                          <span className="text-xs">{task.assignedTo.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Unassigned</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={cn("text-xs", due.color)}>{due.label}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={task.status} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      </SlideOver>
-
-      <ConfirmByTyping
-        open={isDeleteServiceOpen}
-        onClose={() => { setIsDeleteServiceOpen(false); setServiceToDelete(null); }}
-        onConfirm={async () => {
-          if (!serviceToDelete) return;
-          await fetch(`/api/services/${serviceToDelete.id}`, { method: 'DELETE' });
-          fetchServices();
-        }}
-        title="Delete Service"
-        description={`Permanently delete "${serviceToDelete?.name}"? This cannot be undone.`}
-        confirmName={session?.user?.name || "Admin"}
-        actionLabel="Yes, Delete Service"
-      />
+      )}
     </div>
   );
 }
